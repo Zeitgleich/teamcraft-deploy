@@ -1,0 +1,4 @@
+- name: Restart stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ teamcraft_install_dir }}"
+    state: restarted

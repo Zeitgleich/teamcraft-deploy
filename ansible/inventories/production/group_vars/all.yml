@@ -1,0 +1,13 @@
+teamcraft_domain: chat.example.com
+teamcraft_sfu_domain: sfu.chat.example.com
+teamcraft_acme_email: admin@example.com
+teamcraft_install_dir: /opt/teamcraft
+
+# Pinned versions
+teamcraft_version: "0.1.0"
+teamcraft_image_registry: ghcr.io/example
+postgres_version: "18.6-alpine3.23"
+caddy_version: "2.11.7"
+
+# Decrypted on the control machine with sops (community.sops collection)
+teamcraft_secrets_file: "{{ playbook_dir }}/../secrets/production.enc.yaml"

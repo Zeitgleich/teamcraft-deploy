@@ -1,0 +1,6 @@
+# Decrypted secrets never go into git
+secrets/*.dec.*
+secrets/*.plain.*
+*.retry
+.vault_pass
+compose/.env

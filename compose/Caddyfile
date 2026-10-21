@@ -1,0 +1,13 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$TEAMCRAFT_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy teamcraft-server:8080
+}
+
+# Certificate only; the SFU terminates QUIC itself on udp/4433.
+{$TEAMCRAFT_SFU_DOMAIN} {
+	respond "TeamCraft SFU" 200
+}
