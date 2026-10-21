@@ -13,7 +13,8 @@ Network=host
 Volume={{ teamcraft_cert_dir }}:/certs:ro
 GroupAdd=keep-groups
 Secret=sfu_registration_token,type=env,target=TEAMCRAFT_SFU__REGISTRATION_TOKEN
-Environment=TEAMCRAFT_SFU__LISTEN=0.0.0.0:{{ teamcraft_ports.sfu }}
+# Dual-stack socket: [::] with IPV6_V6ONLY off accepts IPv4 (mapped) and IPv6.
+Environment=TEAMCRAFT_SFU__LISTEN=[::]:{{ teamcraft_ports.sfu }}
 Environment=TEAMCRAFT_SFU__CERT=/certs/sfu.crt
 Environment=TEAMCRAFT_SFU__KEY=/certs/sfu.key
 Environment=TEAMCRAFT_SFU__SERVER_URL=https://{{ teamcraft_domain }}

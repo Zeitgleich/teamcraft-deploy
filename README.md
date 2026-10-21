@@ -31,6 +31,11 @@ own user namespace; internal services bind to loopback only.
 Hardening: images pinned by digest, `DropCapability=ALL`, `NoNewPrivileges`, read-only root
 filesystem with noexec tmpfs, `RunInit=yes`, memory limits, journald logging.
 
+**Dual stack:** everything reachable from outside listens on IPv4 and IPv6 – Caddy binds both by
+default, the SFU uses a dual-stack `[::]` socket. Requirements: an IPv6 address on the VPS, A **and**
+AAAA records for both host names, firewall rules for both families (`net.ipv4.ip_unprivileged_port_start`
+also applies to IPv6). Loopback-only services stay on 127.0.0.1.
+
 The SFU certificate is obtained by Caddy; a `tc-proxy` timer copies it to `/srv/teamcraft/certs`
 (group `tc-certs`), which `tc-sfu` reads.
 
