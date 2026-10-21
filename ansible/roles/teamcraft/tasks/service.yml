@@ -1,0 +1,127 @@
+- name: "{{ svc.name }}: service user"
+  ansible.builtin.user:
+    name: "{{ svc.user }}"
+    shell: /usr/sbin/nologin
+    create_home: true
+    groups: "{{ ['tc-certs'] if svc.name in ['caddy', 'teamcraft-sfu'] else [] }}"
+    append: true
+  register: svc_user
+
+- name: "{{ svc.name }}: remember uid"
+  ansible.builtin.set_fact:
+    teamcraft_uids: "{{ teamcraft_uids | default({}) | combine({svc.user: svc_user.uid}) }}"
+
+- name: "{{ svc.name }}: keep user systemd running without login"
+  ansible.builtin.command: "loginctl enable-linger {{ svc.user }}"
+  args:
+    creates: "/var/lib/systemd/linger/{{ svc.user }}"
+
+- name: "{{ svc.name }}: directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ svc.user }}"
+    group: "{{ svc.user }}"
+    mode: "0750"
+  loop:
+    - "/home/{{ svc.user }}/.config/containers/systemd"
+    - "/home/{{ svc.user }}/config"
+
+- name: "{{ svc.name }}: certificate directory (written by caddy, read by the SFU)"
+  ansible.builtin.file:
+    path: "{{ teamcraft_cert_dir }}"
+    state: directory
+    owner: tc-proxy
+    group: tc-certs
+    mode: "0750"
+  when: svc.name == 'caddy'
+
+- name: "{{ svc.name }}: podman secrets"
+  ansible.builtin.shell: |
+    printf '%s' "$VALUE" | podman secret create --replace {{ item }} -
+  environment:
+    VALUE: "{{ teamcraft_secrets[item] }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ svc_user.uid }}"
+  loop: "{{ svc.secrets }}"
+  become: true
+  become_user: "{{ svc.user }}"
+  no_log: true
+  changed_when: false
+
+- name: "{{ svc.name }}: configuration"
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/home/{{ svc.user }}/config/{{ item }}"
+    owner: "{{ svc.user }}"
+    group: "{{ svc.user }}"
+    mode: "0640"
+  loop: "{{ svc.configs }}"
+  register: svc_configs
+
+- name: "{{ svc.name }}: quadlet unit"
+  ansible.builtin.template:
+    src: "{{ svc.name }}.container.j2"
+    dest: "/home/{{ svc.user }}/.config/containers/systemd/{{ svc.name }}.container"
+    owner: "{{ svc.user }}"
+    group: "{{ svc.user }}"
+    mode: "0644"
+  register: svc_unit
+
+- name: "{{ svc.name }}: mark for restart"
+  ansible.builtin.set_fact:
+    teamcraft_changed_services: "{{ teamcraft_changed_services | default([]) + [svc.name] }}"
+  when: svc_unit.changed or svc_configs.changed
+  changed_when: true
+  notify: Restart changed services
+
+- name: "{{ svc.name }}: start"
+  ansible.builtin.systemd_service:
+    name: "{{ svc.name }}.service"
+    state: started
+    daemon_reload: true
+    scope: user
+  become: true
+  become_user: "{{ svc.user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ svc_user.uid }}"
+
+- name: "{{ svc.name }}: SFU certificate export (caddy only)"
+  when: svc.name == 'caddy'
+  block:
+    - name: Caddy data and script directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: tc-proxy
+        group: tc-proxy
+        mode: "0750"
+      loop: [/home/tc-proxy/caddy-data, /home/tc-proxy/bin, /home/tc-proxy/.config/systemd/user]
+
+    - name: Export script
+      ansible.builtin.template:
+        src: sfu-cert-export.sh.j2
+        dest: /home/tc-proxy/bin/sfu-cert-export.sh
+        owner: tc-proxy
+        group: tc-proxy
+        mode: "0750"
+
+    - name: Export service and timer
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "/home/tc-proxy/.config/systemd/user/{{ item }}"
+        owner: tc-proxy
+        group: tc-proxy
+        mode: "0644"
+      loop: [sfu-cert-export.service, sfu-cert-export.timer]
+
+    - name: Enable the export timer
+      ansible.builtin.systemd_service:
+        name: sfu-cert-export.timer
+        state: started
+        enabled: true
+        daemon_reload: true
+        scope: user
+      become: true
+      become_user: tc-proxy
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ svc_user.uid }}"

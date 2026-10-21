@@ -1,0 +1,13 @@
+{
+	email {{ teamcraft_acme_email }}
+}
+
+{{ teamcraft_domain }} {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:{{ teamcraft_ports.server }}
+}
+
+# Certificate only; the SFU terminates QUIC itself on udp/{{ teamcraft_ports.sfu }}.
+{{ teamcraft_sfu_domain }} {
+	respond "TeamCraft SFU" 200
+}

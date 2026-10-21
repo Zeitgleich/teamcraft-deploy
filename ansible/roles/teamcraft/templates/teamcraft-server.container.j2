@@ -1,0 +1,36 @@
+# Managed by Ansible (roles/teamcraft). Runs rootless as tc-server.
+[Unit]
+Description=TeamCraft server (API, gateway)
+# postgres runs under another user; the server retries the connection on start.
+
+[Container]
+# Digest, not tag: Restart=always recreates the container from this line.
+Image={{ teamcraft_images.server }}
+Pull=missing
+ContainerName=teamcraft-server
+# Host network inside tc-server's user namespace; listens on 127.0.0.1 only (Caddy proxies).
+Network=host
+Volume=/home/tc-server/config/teamcraft.toml:/etc/teamcraft/teamcraft.toml:ro,Z
+Exec=--config /etc/teamcraft/teamcraft.toml
+Secret=postgres_password,type=env,target=TEAMCRAFT_DATABASE__PASSWORD
+Secret=oidc_server_client_secret,type=env,target=TEAMCRAFT_OIDC__SERVER_CLIENT_SECRET
+Secret=s3_access_key,type=env,target=TEAMCRAFT_S3__ACCESS_KEY
+Secret=s3_secret_key,type=env,target=TEAMCRAFT_S3__SECRET_KEY
+Secret=sfu_registration_token,type=env,target=TEAMCRAFT_SFU__REGISTRATION_TOKEN
+User=65532
+Group=65532
+DropCapability=ALL
+NoNewPrivileges=true
+ReadOnly=true
+Tmpfs=/tmp:rw,noexec,nosuid,nodev,size=64m
+RunInit=yes
+PodmanArgs=--memory={{ teamcraft_memory.server }}
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=5s
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

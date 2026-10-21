@@ -1,1 +1,40 @@
-teamcraft_install_dir: /opt/teamcraft
+# Each service runs rootless under its own unprivileged user (own subuid range, own podman
+# secrets, own systemd --user instance via quadlet). Services talk over loopback ports.
+teamcraft_base_dir: /srv/teamcraft
+teamcraft_cert_dir: "{{ teamcraft_base_dir }}/certs" # group tc-certs, read by the SFU
+
+teamcraft_images:
+  server: "{{ teamcraft_image_registry }}/teamcraft-server@{{ teamcraft_server_digest }}"
+  sfu: "{{ teamcraft_image_registry }}/teamcraft-sfu@{{ teamcraft_sfu_digest }}"
+  postgres: "docker.io/library/postgres:{{ postgres_version }}"
+  caddy: "docker.io/library/caddy:{{ caddy_version }}"
+
+teamcraft_ports:
+  postgres: 5432 # 127.0.0.1 only
+  server: 8080   # 127.0.0.1 only
+  sfu: 4433      # public, udp
+teamcraft_memory:
+  server: 1g
+  sfu: 1g
+  postgres: 2g
+  caddy: 256m
+
+# name: unit stem; user: service account; secrets: podman secrets this user gets (least privilege);
+# configs: rendered into the user's config dir.
+teamcraft_services:
+  - name: postgres
+    user: tc-db
+    secrets: [postgres_password]
+    configs: []
+  - name: teamcraft-server
+    user: tc-server
+    secrets: [postgres_password, oidc_server_client_secret, s3_access_key, s3_secret_key, sfu_registration_token]
+    configs: [teamcraft.toml]
+  - name: teamcraft-sfu
+    user: tc-sfu
+    secrets: [sfu_registration_token]
+    configs: []
+  - name: caddy
+    user: tc-proxy
+    secrets: []
+    configs: [Caddyfile]

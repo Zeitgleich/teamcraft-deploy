@@ -3,4 +3,3 @@ secrets/*.dec.*
 secrets/*.plain.*
 *.retry
 .vault_pass
-compose/.env

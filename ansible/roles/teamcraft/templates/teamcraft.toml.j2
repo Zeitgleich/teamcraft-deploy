@@ -1,0 +1,27 @@
+# Managed by Ansible (roles/teamcraft). Secrets come from podman secrets as TEAMCRAFT_* variables.
+# Option reference: teamcraft.example.toml in the teamcraft repository.
+
+[server]
+listen = "127.0.0.1:{{ teamcraft_ports.server }}"
+public_url = "https://{{ teamcraft_domain }}"
+
+[database]
+host = "127.0.0.1"
+port = {{ teamcraft_ports.postgres }}
+user = "teamcraft"
+name = "teamcraft"
+
+[oidc]
+issuer = "{{ teamcraft_secrets.oidc_issuer }}"
+client_id = "{{ teamcraft_oidc_client_id }}"
+server_client = "{{ teamcraft_oidc_server_client }}"
+
+[oidc.roles]
+owner = "{{ teamcraft_oidc_roles.owner }}"
+admin = "{{ teamcraft_oidc_roles.admin }}"
+member = "{{ teamcraft_oidc_roles.member }}"
+guest = "{{ teamcraft_oidc_roles.guest }}"
+
+[s3]
+endpoint = "{{ teamcraft_secrets.s3_endpoint }}"
+bucket = "{{ teamcraft_s3_bucket }}"

@@ -1,4 +1,11 @@
-- name: Restart stack
-  community.docker.docker_compose_v2:
-    project_src: "{{ teamcraft_install_dir }}"
+- name: Restart changed services
+  ansible.builtin.systemd_service:
+    name: "{{ item.name }}.service"
     state: restarted
+    daemon_reload: true
+    scope: user
+  loop: "{{ teamcraft_services | selectattr('name', 'in', teamcraft_changed_services | default([])) }}"
+  become: true
+  become_user: "{{ item.user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ teamcraft_uids[item.user] }}"

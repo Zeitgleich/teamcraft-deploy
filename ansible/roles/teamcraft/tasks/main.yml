@@ -1,41 +1,29 @@
-- name: Load secrets
+- name: Load secrets (sops, decrypted on the control machine)
   ansible.builtin.set_fact:
     teamcraft_secrets: "{{ lookup('community.sops.sops', teamcraft_secrets_file) | from_yaml }}"
   no_log: true
 
-- name: Install Docker
+- name: Install Podman (quadlet needs >= 4.4) and rootless prerequisites
   ansible.builtin.package:
-    name:
-      - docker.io
-      - docker-compose-v2
+    name: [podman, catatonit, uidmap, passt]
     state: present
 
-- name: Create install directory
-  ansible.builtin.file:
-    path: "{{ teamcraft_install_dir }}"
-    state: directory
-    mode: "0750"
+# Rootless containers can't bind < 1024; Caddy needs 80/443.
+- name: Allow unprivileged ports from 80
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_unprivileged_port_start
+    value: "80"
+    sysctl_file: /etc/sysctl.d/60-teamcraft.conf
 
-- name: Copy compose stack
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../compose/{{ item }}"
-    dest: "{{ teamcraft_install_dir }}/{{ item }}"
-    mode: "0640"
-  loop:
-    - docker-compose.yml
-    - Caddyfile
-  notify: Restart stack
+- name: Group that may read the SFU certificate
+  ansible.builtin.group:
+    name: tc-certs
 
-- name: Render environment file
-  ansible.builtin.template:
-    src: env.j2
-    dest: "{{ teamcraft_install_dir }}/.env"
-    mode: "0600"
-  no_log: true
-  notify: Restart stack
+- name: Deploy each service under its own user
+  ansible.builtin.include_tasks: service.yml
+  loop: "{{ teamcraft_services }}"
+  loop_control:
+    loop_var: svc
 
-- name: Start stack
-  community.docker.docker_compose_v2:
-    project_src: "{{ teamcraft_install_dir }}"
-    pull: always
-    state: present
+- name: Restart services whose units, configs or secrets changed
+  ansible.builtin.meta: flush_handlers

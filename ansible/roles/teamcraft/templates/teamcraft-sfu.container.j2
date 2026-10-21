@@ -1,0 +1,34 @@
+# Managed by Ansible (roles/teamcraft). Runs rootless as tc-sfu.
+[Unit]
+Description=TeamCraft SFU (WebTransport media forwarding)
+
+[Container]
+Image={{ teamcraft_images.sfu }}
+Pull=missing
+ContainerName=teamcraft-sfu
+# Host network: rootless user-mode networking (pasta) adds per-packet overhead that matters for
+# media forwarding. The SFU only listens on its QUIC port.
+Network=host
+# Certificate exported by caddy's timer; tc-sfu reads it via group tc-certs.
+Volume={{ teamcraft_cert_dir }}:/certs:ro
+GroupAdd=keep-groups
+Secret=sfu_registration_token,type=env,target=TEAMCRAFT_SFU__REGISTRATION_TOKEN
+Environment=TEAMCRAFT_SFU__LISTEN=0.0.0.0:{{ teamcraft_ports.sfu }}
+Environment=TEAMCRAFT_SFU__CERT=/certs/sfu.crt
+Environment=TEAMCRAFT_SFU__KEY=/certs/sfu.key
+Environment=TEAMCRAFT_SFU__SERVER_URL=https://{{ teamcraft_domain }}
+User=65532
+Group=65532
+DropCapability=ALL
+NoNewPrivileges=true
+ReadOnly=true
+RunInit=yes
+PodmanArgs=--memory={{ teamcraft_memory.sfu }}
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=default.target
