@@ -185,3 +185,35 @@
       become_user: tc-proxy
       environment: "{{ svc_env }}"
       changed_when: false
+
+- name: "{{ svc.name }}: restart on a renewed certificate (SFU only)"
+  when: svc.name == 'teamcraft-sfu'
+  block:
+    - name: Systemd user directory
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: tc-sfu
+        group: tc-sfu
+        mode: "0750"
+      loop: [/home/tc-sfu/.config/systemd, /home/tc-sfu/.config/systemd/user]
+
+    - name: Watch path and service
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "/home/tc-sfu/.config/systemd/user/{{ item }}"
+        owner: tc-sfu
+        group: tc-sfu
+        mode: "0644"
+      loop: [sfu-cert-watch.path, sfu-cert-watch.service]
+
+    - name: Enable the watch
+      ansible.builtin.systemd_service:
+        name: sfu-cert-watch.path
+        state: started
+        enabled: true
+        daemon_reload: true
+        scope: user
+      become: true
+      become_user: tc-sfu
+      environment: "{{ svc_env }}"

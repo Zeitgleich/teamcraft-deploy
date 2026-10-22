@@ -178,6 +178,12 @@ verify() {
     # certificate in use; the SFU then closes the plain HTTP/3 request (it only speaks WebTransport).
     check "SFU QUIC + TLS over $ip" sh -c "curl -v -m 10 --http3-only --cacert '$ca' --resolve '$sfu_domain:4433:${ip//[\[\]]/}' https://$sfu_domain:4433/ 2>&1 | grep -q 'SSL certificate verified'"
   done
+  check "SFU restarts for a renewed certificate" docker exec "$target" sh -c '
+    uid=$(id -u tc-sfu); run() { XDG_RUNTIME_DIR=/run/user/$uid runuser -u tc-sfu -- "$@"; }
+    before=$(run systemctl --user show -p ExecMainPID --value teamcraft-sfu.service)
+    touch /srv/teamcraft/certs/sfu.crt; sleep 5
+    after=$(run systemctl --user show -p ExecMainPID --value teamcraft-sfu.service)
+    [ "$before" != "$after" ] && run systemctl --user is-active teamcraft-sfu.service'
   check "SFU control port not public" sh -c "! curl -s -m 3 http://$target_ip4:8081/healthz"
   check "server not public (only through Caddy)" sh -c "! curl -s -m 3 http://$target_ip4:8090/healthz && ! curl -s -m 3 http://$target_ip4:8080/healthz"
   check "Postgres not public" sh -c "! (exec 3<>/dev/tcp/$target_ip4/5432) 2>/dev/null"
