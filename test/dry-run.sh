@@ -16,7 +16,7 @@
 # ansible-playbook, just, ssh, curl (HTTP/3 checks only with a curl built with HTTP/3), python3, and
 # a TeamCraft checkout in $TEAMCRAFT_REPO (default ../teamcraft) with a Rust toolchain for the e2e test.
 # DRY_RUN_BRANDS=1 adds two brands (test/inventory/brands.yml) and checks that each host name gets its
-# own brand; it needs a TeamCraft that knows [[brands]].
+# own brand.
 # DRY_RUN_ANSIBLE_ARGS adds options to every playbook run, e.g. "-e teamcraft_debug=true -vv" to see
 # the output of tasks that hide it because they handle secrets (test secrets only, here).
 set -euo pipefail

@@ -2,8 +2,8 @@
 
 One TeamCraft server can appear under several host names, each with its own name, logo, colors,
 login text, links and e-mail identity. Users, spaces and permissions are the same behind every host
-name; a brand is presentation only. Needs TeamCraft with brand support (the `[[brands]]` section of
-`teamcraft.example.toml`, `docs/branding.md` in the TeamCraft repository).
+name; a brand is presentation only (`[[brands]]` in `teamcraft.example.toml`, `docs/branding.md` in the
+TeamCraft repository).
 
 Brand data is yours: keep it in your own inventory, never in this repository.
 

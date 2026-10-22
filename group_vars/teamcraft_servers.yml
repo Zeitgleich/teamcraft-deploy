@@ -3,7 +3,7 @@
 
 # TeamCraft version: images are pulled with this tag (just update moves it to the playbook's
 # release; docs/updating.md).
-teamcraft_version: "1.0.0-beta.1"
+teamcraft_version: "1.0.0"
 teamcraft_image_registry: ghcr.io/zeitgleich
 
 # Host names

@@ -1,4 +1,4 @@
-# test/dry-run.sh with DRY_RUN_BRANDS=1: two brands on one server (needs a TeamCraft with [[brands]]).
+# test/dry-run.sh with DRY_RUN_BRANDS=1: two brands on one server.
 teamcraft_brands:
   - id: brand-a
     is_default: true
