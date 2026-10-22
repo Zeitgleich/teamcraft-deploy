@@ -28,6 +28,13 @@ teamcraft_server_oidc_roles:
   member: member
   guest: guest
 
+# Brands: the image files of teamcraft_brands (logo = "brand-a/logo.svg" is relative to it), a
+# directory on the control machine, copied to the server and mounted read-only. Empty: no images.
+teamcraft_server_brand_assets_src: ""
+# A request on a host name no brand lists: "default" (the default brand) or "reject" (421).
+teamcraft_server_branding_unknown_host: default
+teamcraft_server_branding_max_asset_bytes: 524288
+
 # Anything else from teamcraft.example.toml, merged into the generated file as TOML sections, e.g.
 #   teamcraft_server_extra_config: |
 #     [guests]

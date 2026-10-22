@@ -13,5 +13,12 @@ keycloak_extra_redirect_uris: []
 keycloak_admin_console_public: false
 # Access token lifetime in seconds.
 keycloak_access_token_lifespan: 300
-# Web client, the desktop app's loopback login (any port, RFC 8252) and the extra ones above.
-keycloak_redirect_uris: "{{ ['https://' ~ teamcraft_domain ~ '/*', 'http://127.0.0.1/callback', 'http://[::1]/callback'] + keycloak_extra_redirect_uris }}"
+# The web client on every host name (brands included), the desktop app's loopback login (any port,
+# RFC 8252) and the extra ones above. Kept in sync on every run, also after the first import.
+keycloak_redirect_uris: >-
+  {{ teamcraft_web_hostnames | map('regex_replace', '^', 'https://') | map('regex_replace', '$', '/*') | list
+     + ['http://127.0.0.1/callback', 'http://[::1]/callback'] + keycloak_extra_redirect_uris }}
+keycloak_web_origins: "{{ teamcraft_web_hostnames | map('regex_replace', '^', 'https://') | list }}"
+# Organization badge (teamcraft_oidc_organization_claim): a token mapper from this user attribute to
+# that claim. Empty: no mapper (set one up yourself, or leave organizations out).
+keycloak_organization_attribute: ""

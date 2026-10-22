@@ -15,6 +15,8 @@
 # Needs: docker (the target runs privileged, for nested rootless podman), podman (image builds),
 # ansible-playbook, just, ssh, curl (HTTP/3 checks only with a curl built with HTTP/3), python3, and
 # a TeamCraft checkout in $TEAMCRAFT_REPO (default ../teamcraft) with a Rust toolchain for the e2e test.
+# DRY_RUN_BRANDS=1 adds two brands (test/inventory/brands.yml) and checks that each host name gets its
+# own brand; it needs a TeamCraft that knows [[brands]].
 # DRY_RUN_ANSIBLE_ARGS adds options to every playbook run, e.g. "-e teamcraft_debug=true -vv" to see
 # the output of tasks that hide it because they handle secrets (test secrets only, here).
 set -euo pipefail
@@ -52,11 +54,12 @@ wait_until() { # description, timeout seconds, command...
 }
 
 playbook() {
-  # shellcheck disable=SC2086 # DRY_RUN_ANSIBLE_ARGS is split into words on purpose
+  # shellcheck disable=SC2086 # DRY_RUN_* options are split into words on purpose
   ANSIBLE_CONFIG="$repo/ansible.cfg" ANSIBLE_ROLES_PATH="$repo/roles" ansible-playbook \
     -i "$here/inventory/hosts" "$repo/setup.yml" --private-key "$state/id_ed25519" \
     -e "teamcraft_server_image=$(cat "$state/teamcraft-server.ref")" \
-    -e "teamcraft_sfu_image=$(cat "$state/teamcraft-sfu.ref")" ${DRY_RUN_ANSIBLE_ARGS:-} "$@"
+    -e "teamcraft_sfu_image=$(cat "$state/teamcraft-sfu.ref")" \
+    ${DRY_RUN_BRANDS:+-e @$here/inventory/brands.yml} ${DRY_RUN_ANSIBLE_ARGS:-} "$@"
 }
 
 up() {
@@ -163,6 +166,21 @@ verify() {
     check "port $port not reachable from outside" sh -c "! timeout 3 bash -c \"exec 3<>/dev/tcp/$target_ip4/$port\" 2>/dev/null"
   done
   check "firewall drops other ports" sh -c "! curl -s -m 3 http://$target_ip4:9999/"
+  if [ -n "${DRY_RUN_BRANDS:-}" ]; then
+    step "Brands"
+    local brand_b=chat-b.172-31-250-10.sslip.io
+    check "default host serves Brand A" sh -c "curl -fsS --cacert '$ca' --resolve '$domain:443:$target_ip4' https://$domain/api/v1/brand | grep -q '\"display_name\": *\"Brand A\"'"
+    check "brand host serves Brand B (IPv4)" sh -c "curl -fsS --cacert '$ca' --resolve '$brand_b:443:$target_ip4' https://$brand_b/api/v1/brand | grep -q '\"display_name\": *\"Brand B\"'"
+    check "brand host serves Brand B (IPv6)" sh -c "curl -fsS --cacert '$ca' --resolve '$brand_b:443:$target_ip6' https://$brand_b/api/v1/brand | grep -q '\"display_name\": *\"Brand B\"'"
+    check "brand logo served" sh -c "curl -fsS --cacert '$ca' --resolve '$brand_b:443:$target_ip4' https://$brand_b/api/v1/brand/assets/logo | grep -q 7a3cd0"
+    check "brand host readyz" curl -fsS --cacert "$ca" --resolve "$brand_b:443:$target_ip4" "https://$brand_b/readyz"
+    # shellcheck disable=SC2016 # expands inside the target, not here
+    check "Keycloak allows sign-in on the brand host" docker exec "$target" sh -c '
+      uid=$(id -u tc-keycloak); kc() { XDG_RUNTIME_DIR=/run/user/$uid runuser -u tc-keycloak -- podman exec teamcraft-keycloak /opt/keycloak/bin/kcadm.sh "$@" --config /tmp/kcadm-check.config; }
+      kc config credentials --server http://127.0.0.1:8180 --realm master --user admin --password "$(cat /srv/teamcraft/secrets/keycloak_admin_password)" >/dev/null &&
+      kc get clients -r teamcraft -q clientId=teamcraft -q exact=true | grep -q "https://chat-b.172-31-250-10.sslip.io/\*" &&
+      kc get clients -r teamcraft -q clientId=teamcraft -q exact=true | grep -q "\"name\" : \"organization\""'
+  fi
   step "Backups"
   check "backup now" playbook --tags=backup
   check "database dumps exist" docker exec "$target" sh -c 'ls /srv/teamcraft/backups/postgres/teamcraft-*.dump /srv/teamcraft/backups/postgres/keycloak-*.dump'

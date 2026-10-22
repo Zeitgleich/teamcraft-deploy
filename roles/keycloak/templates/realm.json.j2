@@ -23,7 +23,7 @@
       "serviceAccountsEnabled": false,
       "fullScopeAllowed": true,
       "redirectUris": {{ keycloak_redirect_uris | to_json }},
-      "webOrigins": {{ ["https://" ~ teamcraft_domain] | to_json }},
+      "webOrigins": {{ keycloak_web_origins | to_json }},
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "+",

@@ -11,6 +11,9 @@ record for each, pointing at the server:
 | `s3.chat.example.com`  | bundled Garage (attachments) | `garage_enabled`   |
 | `cal.chat.example.com` | bundled CalCraft             | `calcraft_enabled` |
 
+Every host name of a brand (`teamcraft_brands`, [components/branding.md](components/branding.md))
+needs the same two records.
+
 A wildcard `*.chat.example.com` (A + AAAA) next to `chat.example.com` covers all of them.
 
 Caddy gets Let's Encrypt certificates for every name over HTTP (port 80), so the records must resolve

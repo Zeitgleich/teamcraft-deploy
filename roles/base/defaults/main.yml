@@ -11,6 +11,8 @@ base_packages:
   - systemd-container
   - openssl
   - curl
+  # brand images (ansible.posix.synchronize)
+  - rsync
 
 # Firewall (nftables, IPv4 and IPv6): replaces the host's ruleset with one that allows SSH, 80/443
 # (tcp, and udp for HTTP/3) and the SFU's UDP port, plus base_firewall_extra_ports. Disable it to

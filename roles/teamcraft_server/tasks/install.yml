@@ -49,6 +49,27 @@
         group: tc-server
       when: teamcraft_server_web_archive.changed
 
+- name: Brand images
+  when: teamcraft_server_brand_assets_src | length > 0
+  block:
+    - name: Brand image directory
+      ansible.builtin.file:
+        path: /home/tc-server/brands
+        state: directory
+        owner: tc-server
+        group: tc-server
+        mode: "0755"
+
+    # World-readable: read by the container's subordinate uid through the bind mount.
+    - name: Brand image files
+      ansible.posix.synchronize:
+        src: "{{ teamcraft_server_brand_assets_src | regex_replace('/*$', '') }}/"
+        dest: /home/tc-server/brands/
+        delete: true
+        recursive: true
+        rsync_opts: ["--chmod=D0755,F0644", "--chown=tc-server:tc-server"]
+      register: teamcraft_server_brand_assets
+
 - name: Quadlet unit
   ansible.builtin.template:
     src: teamcraft-server.container.j2
@@ -66,4 +87,5 @@
     base_service_name: teamcraft-server
     base_service_changed: >-
       {{ teamcraft_server_unit.changed or teamcraft_server_config.changed or base_service_secrets_changed
-         or (teamcraft_server_web_archive.changed | default(false)) }}
+         or (teamcraft_server_web_archive.changed | default(false))
+         or (teamcraft_server_brand_assets.changed | default(false)) }}

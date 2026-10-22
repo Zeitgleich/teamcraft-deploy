@@ -74,3 +74,12 @@ teamcraft_services:
 teamcraft_base_dir: /srv/teamcraft
 teamcraft_cert_dir: "{{ teamcraft_base_dir }}/certs"
 teamcraft_backup_dir: "{{ teamcraft_base_dir }}/backups"
+
+# Brands (docs/components/branding.md): several host names, each with its own name, logo, colors and
+# mail identity, all served by the one TeamCraft server. Empty: the single built-in brand on
+# teamcraft_domain. Brand data is your own: keep it in your inventory.
+teamcraft_brands: []
+# Every host name the server answers on: teamcraft_domain plus those of the brands.
+teamcraft_web_hostnames: "{{ ([teamcraft_domain] + (teamcraft_brands | map(attribute='hostnames') | flatten)) | unique }}"
+# Optional: access-token claim with the user's organization ([oidc] organization_claim).
+teamcraft_oidc_organization_claim: ""

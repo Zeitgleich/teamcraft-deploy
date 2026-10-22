@@ -18,3 +18,16 @@
       - ansible_facts['distribution_major_version'] | int >= 13
     fail_msg: "The playbook supports Debian 13 (trixie) and newer, not {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}."
     quiet: true
+
+- name: Brands are consistent
+  ansible.builtin.assert:
+    that:
+      - teamcraft_brands | selectattr('is_default', 'defined') | selectattr('is_default') | list | length == 1
+      - teamcraft_brands | map(attribute='id') | unique | list | length == teamcraft_brands | length
+      - (teamcraft_brands | map(attribute='hostnames') | flatten | length) == (teamcraft_brands | map(attribute='hostnames') | flatten | unique | length)
+      - teamcraft_domain in (teamcraft_brands | map(attribute='hostnames') | flatten)
+    fail_msg: >-
+      teamcraft_brands: exactly one brand with is_default: true, unique ids, every host name in one brand
+      only, and teamcraft_domain among them (docs/components/branding.md).
+    quiet: true
+  when: teamcraft_brands | length > 0

@@ -30,18 +30,19 @@ just self-check
 
 ## Components
 
-| Component                                               | Default               | Runs as              | Toggle                     |
-|---------------------------------------------------------|-----------------------|----------------------|----------------------------|
-| [Caddy](docs/components/caddy.md)                       | on                    | `tc-proxy`           | `caddy_enabled`            |
-| [PostgreSQL](docs/components/postgres.md)               | on                    | `tc-db`              | `postgres_enabled`         |
-| [TeamCraft server](docs/components/teamcraft-server.md) | on                    | `tc-server`          | `teamcraft_server_enabled` |
-| [TeamCraft SFU](docs/components/teamcraft-sfu.md)       | on                    | `tc-sfu`             | `teamcraft_sfu_enabled`    |
-| [Keycloak](docs/components/keycloak.md)                 | on (or external OIDC) | `tc-keycloak`        | `keycloak_enabled`         |
-| [Garage](docs/components/garage.md)                     | on (or external S3)   | `tc-garage`          | `garage_enabled`           |
-| [Mail relay](docs/components/mail.md)                   | off (external SMTP)   | –                    | `teamcraft_smtp_enabled`   |
-| [CalCraft](docs/components/calcraft.md)                 | off                   | `tc-calcraft`        | `calcraft_enabled`         |
-| [Backups](docs/backups.md)                              | on                    | `tc-db` | `backups_enabled`          |
-| Base (users, Podman, firewall, secrets)                 | always                | root                 | `base_firewall_enabled`    |
+| Component                                               | Default               | Runs as       | Toggle                     |
+|---------------------------------------------------------|-----------------------|---------------|----------------------------|
+| [Caddy](docs/components/caddy.md)                       | on                    | `tc-proxy`    | `caddy_enabled`            |
+| [PostgreSQL](docs/components/postgres.md)               | on                    | `tc-db`       | `postgres_enabled`         |
+| [TeamCraft server](docs/components/teamcraft-server.md) | on                    | `tc-server`   | `teamcraft_server_enabled` |
+| [TeamCraft SFU](docs/components/teamcraft-sfu.md)       | on                    | `tc-sfu`      | `teamcraft_sfu_enabled`    |
+| [Keycloak](docs/components/keycloak.md)                 | on (or external OIDC) | `tc-keycloak` | `keycloak_enabled`         |
+| [Garage](docs/components/garage.md)                     | on (or external S3)   | `tc-garage`   | `garage_enabled`           |
+| [Mail relay](docs/components/mail.md)                   | off (external SMTP)   | –             | `teamcraft_smtp_enabled`   |
+| [CalCraft](docs/components/calcraft.md)                 | off                   | `tc-calcraft` | `calcraft_enabled`         |
+| [Brands](docs/components/branding.md)                   | one built-in          | –             | `teamcraft_brands`         |
+| [Backups](docs/backups.md)                              | on                    | `tc-db`       | `backups_enabled`          |
+| Base (users, Podman, firewall, secrets)                 | always                | root          | `base_firewall_enabled`    |
 
 ## Testing changes
 

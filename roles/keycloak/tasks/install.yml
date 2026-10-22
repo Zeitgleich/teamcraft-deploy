@@ -62,3 +62,6 @@
   until: keycloak_ready.status == 200
   retries: 60
   delay: 5
+
+- name: Client settings that change after the first start
+  ansible.builtin.include_tasks: client_sync.yml

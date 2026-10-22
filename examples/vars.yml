@@ -22,6 +22,9 @@ teamcraft_admin_email: admin@example.com
 # teamcraft_s3_bucket: teamcraft
 # (keys: teamcraft_s3_access_key / teamcraft_s3_secret_key, preferably from a sops file, below)
 
+# Several brands (host names with their own name, logo, colors) on this server:
+# docs/components/branding.md (teamcraft_brands).
+
 # Secrets are generated on the server on the first run (/srv/teamcraft/secrets). To keep some or
 # all of them in a sops + age encrypted file on your machine instead (docs/configuring.md):
 # base_secrets_sops_file: "{{ inventory_dir }}/host_vars/chat.example.com/secrets.sops.yml"

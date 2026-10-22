@@ -1,0 +1,22 @@
+# test/dry-run.sh with DRY_RUN_BRANDS=1: two brands on one server (needs a TeamCraft with [[brands]]).
+teamcraft_brands:
+  - id: brand-a
+    is_default: true
+    hostnames: [chat.172-31-250-10.sslip.io]
+    display_name: Brand A
+    logo: brand-a/logo.svg
+    login_title: {en: Welcome to Brand A, de: Willkommen bei Brand A}
+    colors:
+      light: {accent: "#0b7f78"}
+  - id: brand-b
+    hostnames: [chat-b.172-31-250-10.sslip.io]
+    display_name: Brand B
+    email_domains: [brand-b.example.com]
+    logo: brand-b/logo.svg
+    colors:
+      light: {accent: "#7a3cd0"}
+      dark: {accent: "#b38cf0"}
+    mail: {sender_name: Brand B Team}
+teamcraft_server_brand_assets_src: "{{ inventory_dir }}/../brand-assets"
+teamcraft_oidc_organization_claim: organization
+keycloak_organization_attribute: organization

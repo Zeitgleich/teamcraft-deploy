@@ -12,6 +12,9 @@ Volume=/home/tc-server/config/teamcraft.toml:/etc/teamcraft/teamcraft.toml:ro,Z
 {% if teamcraft_server_web_enabled %}
 Volume=/home/tc-server/web:/srv/teamcraft/web:ro,Z
 {% endif %}
+{% if teamcraft_server_brand_assets_src | length > 0 %}
+Volume=/home/tc-server/brands:/etc/teamcraft/brands:ro,Z
+{% endif %}
 Environment=TEAMCRAFT_CONFIG=/etc/teamcraft/teamcraft.toml
 # The image sets TEAMCRAFT_SERVER__LISTEN_ADDR=[::]:8080, and the environment wins over the file:
 # override it, or the server listens on every address of the host (host network), unproxied.

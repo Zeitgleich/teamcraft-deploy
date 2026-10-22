@@ -1,0 +1,64 @@
+# The realm import runs once; host names added later (brands) and the organization mapper are applied
+# to the existing client here, on every run.
+- name: Admin session for kcadm
+  ansible.builtin.command: >-
+    podman exec teamcraft-keycloak /opt/keycloak/bin/kcadm.sh config credentials --config /tmp/kcadm.config
+    --server http://127.0.0.1:{{ teamcraft_ports.keycloak }} --realm master --user admin --password {{ base_secrets.keycloak_admin_password | quote }}
+  become: true
+  become_user: tc-keycloak
+  environment: "{{ base_service_env }}"
+  changed_when: false
+  no_log: "{{ not (teamcraft_debug | default(false)) }}"
+
+- name: The apps' client as it is
+  ansible.builtin.command: >-
+    podman exec teamcraft-keycloak /opt/keycloak/bin/kcadm.sh get clients --config /tmp/kcadm.config
+    -r {{ keycloak_realm }} -q clientId={{ teamcraft_oidc_client_id }} -q exact=true
+  become: true
+  become_user: tc-keycloak
+  environment: "{{ base_service_env }}"
+  register: keycloak_client_current
+  changed_when: false
+
+- name: Redirect URIs and web origins of every host name
+  vars:
+    keycloak_client: "{{ (keycloak_client_current.stdout | from_json)[0] }}"
+  ansible.builtin.command: >-
+    podman exec teamcraft-keycloak /opt/keycloak/bin/kcadm.sh update clients/{{ keycloak_client.id }}
+    --config /tmp/kcadm.config -r {{ keycloak_realm }}
+    -s {{ ('redirectUris=' ~ (keycloak_redirect_uris | to_json)) | quote }}
+    -s {{ ('webOrigins=' ~ (keycloak_web_origins | to_json)) | quote }}
+  become: true
+  become_user: tc-keycloak
+  environment: "{{ base_service_env }}"
+  when: >-
+    (keycloak_client.redirectUris | sort) != (keycloak_redirect_uris | sort)
+    or (keycloak_client.webOrigins | sort) != (keycloak_web_origins | sort)
+  changed_when: true
+
+- name: Organization claim mapper
+  vars:
+    keycloak_client: "{{ (keycloak_client_current.stdout | from_json)[0] }}"
+    keycloak_mapper:
+      name: organization
+      protocol: openid-connect
+      protocolMapper: oidc-usermodel-attribute-mapper
+      config:
+        user.attribute: "{{ keycloak_organization_attribute }}"
+        claim.name: "{{ teamcraft_oidc_organization_claim }}"
+        jsonType.label: String
+        access.token.claim: "true"
+        id.token.claim: "false"
+        userinfo.token.claim: "false"
+  ansible.builtin.command: >-
+    podman exec teamcraft-keycloak /opt/keycloak/bin/kcadm.sh create clients/{{ keycloak_client.id }}/protocol-mappers/models
+    --config /tmp/kcadm.config -r {{ keycloak_realm }}
+    -b {{ keycloak_mapper | to_json | quote }}
+  become: true
+  become_user: tc-keycloak
+  environment: "{{ base_service_env }}"
+  when:
+    - keycloak_organization_attribute | length > 0
+    - teamcraft_oidc_organization_claim | length > 0
+    - (keycloak_client.protocolMappers | default([]) | selectattr('name', 'equalto', 'organization') | list | length) == 0
+  changed_when: true

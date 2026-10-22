@@ -1,3 +1,25 @@
+{# A TOML value from YAML: strings, numbers, booleans and lists of them (JSON strings are TOML strings). #}
+{% macro toml_value(value) %}{% if value is boolean %}{{ value | lower }}{% elif value is number %}{{ value }}{% else %}{{ value | to_json }}{% endif %}{% endmacro %}
+{# A table: its plain keys, then its sub-tables ([path.key]), two levels deep (brands.colors.light). #}
+{% macro toml_table(path, table) %}
+{% for key, value in table.items() if value is not mapping %}
+{{ key }} = {{ toml_value(value) }}
+{% endfor %}
+{% for key, value in table.items() if value is mapping %}
+
+[{{ path }}.{{ key }}]
+{% for subkey, subvalue in value.items() if subvalue is not mapping %}
+{{ subkey }} = {{ toml_value(subvalue) }}
+{% endfor %}
+{% for subkey, subvalue in value.items() if subvalue is mapping %}
+
+[{{ path }}.{{ key }}.{{ subkey }}]
+{% for leaf, leafvalue in subvalue.items() %}
+{{ leaf }} = {{ toml_value(leafvalue) }}
+{% endfor %}
+{% endfor %}
+{% endfor %}
+{% endmacro %}
 # Managed by Ansible (teamcraft-deploy, role teamcraft_server). Secrets come from podman secrets as
 # TEAMCRAFT_* variables. Option reference: teamcraft.example.toml in the TeamCraft repository;
 # unset options keep its defaults. Add more with teamcraft_server_extra_config.
@@ -9,6 +31,9 @@ listen_addr = "127.0.0.1:{{ teamcraft_ports.server }}"
 issuer = "{{ teamcraft_oidc_issuer }}"
 client_id = "{{ teamcraft_oidc_client_id }}"
 server_client = "{{ teamcraft_oidc_server_client }}"
+{% if teamcraft_oidc_organization_claim | length > 0 %}
+organization_claim = "{{ teamcraft_oidc_organization_claim }}"
+{% endif %}
 {% if teamcraft_server_oidc_jwks_uri | length > 0 %}
 jwks_uri = "{{ teamcraft_server_oidc_jwks_uri }}"
 {% endif %}
@@ -43,6 +68,20 @@ path_style = {{ teamcraft_s3_path_style | bool | lower }}
 {% if teamcraft_server_web_enabled %}
 [web]
 static_dir = "/srv/teamcraft/web"
+
+{% endif %}
+{% if teamcraft_brands | length > 0 %}
+# Brands (docs/components/branding.md), from teamcraft_brands.
+[branding]
+{% if teamcraft_server_brand_assets_src | length > 0 %}
+assets_dir = "/etc/teamcraft/brands"
+{% endif %}
+unknown_host = "{{ teamcraft_server_branding_unknown_host }}"
+max_asset_bytes = {{ teamcraft_server_branding_max_asset_bytes }}
+{% for brand in teamcraft_brands %}
+
+[[brands]]
+{{ toml_table('brands', brand) }}{% endfor %}
 
 {% endif %}
 [shares]

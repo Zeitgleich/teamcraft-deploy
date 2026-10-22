@@ -13,7 +13,9 @@
 {% endif %}
 }
 
-{{ teamcraft_domain }} {
+# The server and every brand host name (teamcraft_brands): one server, Host passed unchanged, a
+# certificate per name.
+{{ teamcraft_web_hostnames | join(', ') }} {
 	import tls
 	encode zstd gzip
 	# Internal API (SFU reports, mail inbox): reached over loopback only, never from the internet.
