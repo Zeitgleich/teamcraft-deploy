@@ -3,12 +3,13 @@
 Private deployment configuration for a TeamCraft instance. The application code lives in the
 `teamcraft` monorepo; this repository only describes **where and how** it runs.
 
-| Path                                       | Content                                                     |
-|--------------------------------------------|-------------------------------------------------------------|
-| `ansible/`                                 | Playbook + role that deploys TeamCraft with rootless Podman |
-| `ansible/roles/teamcraft/templates/*.container.j2` | Quadlet units, one per service                      |
-| `secrets/`                                 | sops-encrypted secrets (`*.enc.yaml`), never plaintext       |
-| `.sops.yaml`                               | Which age keys can decrypt the secrets                      |
+| Path                                               | Content                                                     |
+|----------------------------------------------------|-------------------------------------------------------------|
+| `ansible/`                                         | Playbook + role that deploys TeamCraft with rootless Podman |
+| `ansible/roles/teamcraft/templates/*.container.j2` | Quadlet units, one per service                              |
+| `secrets/`                                         | sops-encrypted secrets (`*.enc.yaml`), never plaintext      |
+| `.sops.yaml`                                       | Which age keys can decrypt the secrets                      |
+| `test/dry-run.sh`                                  | End-to-end dry run against a throwaway local target         |
 
 ## Runtime model: rootless Podman + Quadlet, one user per service
 
@@ -17,12 +18,12 @@ Every service runs as its **own unprivileged user** with its own subuid range, i
 `.container` files into native systemd units, so `systemctl --user status` and `journalctl` work as
 for any other service.
 
-| Service            | User        | Network              | Secrets it gets                                     |
-|--------------------|-------------|----------------------|-----------------------------------------------------|
-| `caddy`            | `tc-proxy`  | host, 80/443 tcp+udp | none                                                |
-| `teamcraft-server` | `tc-server` | host, 127.0.0.1:8080 | DB password, OIDC client secret, S3 keys, SFU token |
-| `teamcraft-sfu`    | `tc-sfu`    | host, 4433/udp       | SFU registration token                              |
-| `postgres`         | `tc-db`     | host, 127.0.0.1:5432 | DB password                                         |
+| Service            | User        | Network                                | Secrets it gets                                                        |
+|--------------------|-------------|----------------------------------------|------------------------------------------------------------------------|
+| `caddy`            | `tc-proxy`  | host, 80/443 tcp+udp                   | none                                                                   |
+| `teamcraft-server` | `tc-server` | host, 127.0.0.1:8080                   | database URL, S3 keys, SFU token, call signing key, guest token secret |
+| `teamcraft-sfu`    | `tc-sfu`    | host, 4433/udp; 127.0.0.1:8081 control | SFU registration token                                                 |
+| `postgres`         | `tc-db`     | host, 127.0.0.1:5432                   | DB password                                                            |
 
 Why host networking: rootless containers of different users can't share a podman network, and the
 SFU shouldn't pay the per-packet cost of user-mode networking. Each container still runs in its
@@ -59,3 +60,10 @@ ansible-playbook -i ansible/inventories/production ansible/site.yml
 ```
 
 Versions and digests are pinned in `ansible/inventories/production/group_vars/all.yml`.
+
+## Dry run
+
+`test/dry-run.sh all` deploys to a throwaway Debian trixie container on the local machine and
+checks the result (health over IPv4 and IPv6, internal API refused, SFU over QUIC, encrypted
+messages between two users through the teamcraft end-to-end harness). Details in the script's
+header; `test/dry-run.sh down` removes it. Run it after every change to the role.

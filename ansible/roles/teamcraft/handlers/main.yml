@@ -9,3 +9,4 @@
   become_user: "{{ item.user }}"
   environment:
     XDG_RUNTIME_DIR: "/run/user/{{ teamcraft_uids[item.user] }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ teamcraft_uids[item.user] }}/bus"
