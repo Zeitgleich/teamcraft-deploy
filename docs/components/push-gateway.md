@@ -6,8 +6,8 @@ any TeamCraft server; it sees device tokens and ciphertext, never users or messa
 (the gateway is its own project, [teamcraft-push-gateway](https://github.com/Zeitgleich/teamcraft-push-gateway):
 its `docs/design.md` explains the threat model and limits, `docs/api.md` the protocol). Two sides here:
 
-1. **Your TeamCraft server** sends through a gateway: set `teamcraft_push_gateway_url`. Almost
-   everybody needs only this.
+1. **Your TeamCraft server** sends through a gateway: this is on by default
+   (`teamcraft_push_gateway_url`, the gateway of the official apps). Almost everybody needs nothing else.
 2. **A gateway host**: only for whoever publishes apps. Optional, off by default, on its **own host**,
    separate from every chat server, because it holds the publisher's credentials.
 
@@ -15,7 +15,7 @@ its `docs/design.md` explains the threat model and limits, `docs/api.md` the pro
 
 ```yaml
 # inventory/host_vars/chat.example.com/vars.yml
-teamcraft_push_gateway_url: https://gateway.example.com   # the publisher's gateway
+teamcraft_push_gateway_url: https://push-gw.zeitgleich.de   # the default; "" turns it off
 ```
 
 `just install-all` adds `[push.gateway]` to the server's configuration. The server's key for the gateway
