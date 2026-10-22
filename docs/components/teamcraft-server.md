@@ -11,6 +11,7 @@ root filesystem, no capabilities, `127.0.0.1:8080` behind Caddy. Configuration i
 | `teamcraft_server_web_enabled`  | `false`                                         | serve the web client from the release archive       |
 | `teamcraft_server_web_checksum` | empty                                           | `sha256:<hex>` from the release's `SHA256SUMS`      |
 | `teamcraft_server_log_filter`   | `info`                                          | `tracing` filter                                    |
+| `teamcraft_push_gateway_url`    | `https://push-gw.zeitgleich.de`                 | push gateway for the store apps (push-gateway.md)   |
 | `teamcraft_server_extra_config` | empty                                           | more TOML (any section of `teamcraft.example.toml`) |
 
 Every option of the server is documented in `teamcraft.example.toml` of the TeamCraft repository;

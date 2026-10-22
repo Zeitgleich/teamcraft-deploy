@@ -1,0 +1,41 @@
+# The push gateway (docs/components/push-gateway.md): holds the APNs and FCM credentials of the store
+# apps and forwards the sealed wake-ups of any TeamCraft server. Optional and off by default; it runs on
+# its own host (group [teamcraft_push_gateways]), rootless as tc-gateway, behind its own Caddy (tc-gwproxy).
+push_gateway_enabled: false
+# Public host name (A + AAAA records); Caddy obtains the certificate for it.
+push_gateway_hostname: ""
+push_gateway_admin_email: ""
+# The gateway has its own repository and releases (github.com/Zeitgleich/teamcraft-push-gateway).
+push_gateway_version: "1.0.0"
+push_gateway_image: "ghcr.io/zeitgleich/teamcraft-push-gateway:{{ push_gateway_version }}"
+push_gateway_proxy_image: "docker.io/library/caddy:2.11.7"
+push_gateway_memory: 256m
+push_gateway_log_filter: info
+# acme: Let's Encrypt (ports 80/443 reachable). internal: Caddy's own CA (tests).
+push_gateway_tls: acme
+
+# open: any server registers its own key. closed: only keys added by hand
+# (`teamcraft-push-gateway servers allow <key>`, docs/components/push-gateway.md).
+push_gateway_registration_mode: open
+# Limits of every server, merged over the gateway's defaults (names: [limits] in
+# teamcraft-push-gateway.example.toml), e.g. {pushes_per_day: 50000}.
+push_gateway_limits: {}
+
+# iOS: the .p8 key (the file's text) and its identifiers. Keep the key in the sops file or an inventory
+# secret; it is stored as a podman secret and never written to the config file.
+push_gateway_apns_key: ""
+push_gateway_apns_key_id: ""
+push_gateway_apns_team_id: ""
+push_gateway_apns_bundle_id: ""
+push_gateway_apns_use_sandbox: false
+# Android: the Firebase service account JSON (the file's text).
+push_gateway_fcm_service_account: ""
+
+# Ports on the host, loopback only: the API behind Caddy, and health and metrics.
+push_gateway_port: 8090
+push_gateway_health_port: 8091
+
+# Podman secrets of the gateway (empty ones are left out).
+push_gateway_secrets:
+  apns_key: "{{ push_gateway_apns_key }}"
+  fcm_service_account: "{{ push_gateway_fcm_service_account }}"

@@ -21,6 +21,8 @@ base_firewall_enabled: true
 base_firewall_ssh_port: "{{ ansible_port | default(22) }}"
 # e.g. [{port: 9100, proto: tcp}]
 base_firewall_extra_ports: []
+# The SFU's UDP port; off on hosts that run no SFU (the push gateway host).
+base_firewall_open_sfu: true
 
 # Secrets: generated on the host on the first run and kept there (root only). A sops file on the
 # control machine can provide any of them instead (its values win), e.g. to keep them in your own
@@ -44,4 +46,6 @@ base_generated_secrets:
   - {name: meetings_guest_token_secret, kind: token}
   - {name: call_signing_key, kind: ed25519}
   - {name: vapid_private_key, kind: base64url32}
+  # The server's identity at a push gateway (an Ed25519 seed); its quota and any block follow it.
+  - {name: push_gateway_key, kind: base64url32}
   - {name: calcraft_password, kind: hex}

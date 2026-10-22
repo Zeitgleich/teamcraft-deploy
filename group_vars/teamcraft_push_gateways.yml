@@ -1,0 +1,7 @@
+# The push gateway host runs nothing else of TeamCraft (docs/components/push-gateway.md). Defaults of
+# the role: roles/push_gateway/defaults/main.yml.
+teamcraft_base_dir: /srv/teamcraft
+# Only the base role's firewall template reads this; there is no SFU on this host.
+teamcraft_ports:
+  sfu: 4433
+base_firewall_open_sfu: false

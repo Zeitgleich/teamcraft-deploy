@@ -69,7 +69,7 @@ Keys you can set there (all optional; missing ones are generated): `postgres_pas
 `teamcraft_db_password`, `keycloak_db_password`, `keycloak_admin_password`,
 `keycloak_server_client_secret`, `garage_rpc_secret`, `garage_admin_token`, `garage_access_key`,
 `garage_secret_key`, `sfu_registration_token`, `meetings_guest_token_secret`, `call_signing_key`
-(Ed25519 PEM), `vapid_private_key`, `calcraft_password`; and those that can't be generated:
+(Ed25519 PEM), `vapid_private_key`, `push_gateway_key`, `calcraft_password`; and those that can't be generated:
 `s3_access_key` / `s3_secret_key` (external S3), `oidc_sync_client_secret` (external OIDC),
 `smtp_password`, `caldav_password` (external CalDAV), `backups_remote_access_key` /
 `backups_remote_secret_key`. Rotating: change the value and run `just install-all`; the affected

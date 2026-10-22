@@ -35,6 +35,13 @@ teamcraft_server_brand_assets_src: ""
 teamcraft_server_branding_unknown_host: default
 teamcraft_server_branding_max_asset_bytes: 524288
 
+# Push gateway for the store apps (docs/components/push-gateway.md): the iOS and Android store apps
+# can only be pushed to with their publisher's credentials, which a push gateway holds. Set the URL of
+# the publisher's gateway (default: the one of the official apps); the server key is generated like the
+# other secrets. Set it empty for no gateway, e.g. with self-built apps that use your own credentials
+# (teamcraft_server_extra_config with [push.apns] / [push.fcm]).
+teamcraft_push_gateway_url: https://push-gw.zeitgleich.de
+
 # Anything else from teamcraft.example.toml, merged into the generated file as TOML sections, e.g.
 #   teamcraft_server_extra_config: |
 #     [guests]
@@ -51,6 +58,7 @@ teamcraft_server_secrets:
   meetings_guest_token_secret: "{{ base_secrets.meetings_guest_token_secret }}"
   call_signing_key: "{{ base_secrets.call_signing_key }}"
   vapid_private_key: "{{ base_secrets.vapid_private_key }}"
+  push_gateway_key: "{{ base_secrets.push_gateway_key if teamcraft_push_gateway_url | length > 0 else '' }}"
   oidc_sync_client_secret: "{{ teamcraft_server_oidc_sync_client_secret if teamcraft_server_oidc_sync_enabled else '' }}"
   smtp_password: "{{ teamcraft_smtp_password if teamcraft_smtp_enabled else '' }}"
   caldav_password: "{{ teamcraft_caldav_password if teamcraft_caldav_calendar_url | length > 0 else '' }}"

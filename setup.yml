@@ -17,3 +17,11 @@
     # Their tasks carry their own tags (start, stop, self-check).
     - role: services
     - role: self_check
+
+# Optional, off by default, on its own host (docs/components/push-gateway.md): only whoever publishes
+# store apps runs a push gateway. Put the host in the group [teamcraft_push_gateways] of the inventory.
+- name: Set up a TeamCraft push gateway
+  hosts: teamcraft_push_gateways
+  become: true
+  roles:
+    - role: push_gateway

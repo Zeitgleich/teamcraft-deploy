@@ -22,6 +22,10 @@ teamcraft_admin_email: admin@example.com
 # teamcraft_s3_bucket: teamcraft
 # (keys: teamcraft_s3_access_key / teamcraft_s3_secret_key, preferably from a sops file, below)
 
+# The iOS and Android store apps are pushed to through their publisher's push gateway
+# (docs/components/push-gateway.md):
+# teamcraft_push_gateway_url: https://push-gw.zeitgleich.de   # the default; set "" to turn it off
+
 # Several brands (host names with their own name, logo, colors) on this server:
 # docs/components/branding.md (teamcraft_brands).
 

@@ -1,0 +1,18 @@
+# Managed by Ansible (teamcraft-deploy, role push_gateway).
+{
+	email {{ push_gateway_admin_email }}
+{% if push_gateway_tls == 'internal' %}
+	skip_install_trust
+{% endif %}
+}
+
+{{ push_gateway_hostname }} {
+{% if push_gateway_tls == 'internal' %}
+	tls internal
+{% endif %}
+	encode zstd gzip
+	# Health and metrics belong to the operator's network, not the internet.
+	respond /healthz 404
+	respond /metrics 404
+	reverse_proxy 127.0.0.1:{{ push_gateway_port }}
+}

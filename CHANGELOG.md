@@ -6,6 +6,14 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Push gateway for the store apps: `teamcraft_push_gateway_url` points the server at the publisher's
+  gateway (default `https://push-gw.zeitgleich.de`) (generated secret `push_gateway_key`), and the optional role `push_gateway` runs a gateway on
+  its own host (inventory group `teamcraft_push_gateways`, off by default). See
+  [docs/components/push-gateway.md](docs/components/push-gateway.md).
+- The gateway is a separate project with its own releases: `push_gateway_version` pins its image.
+
 ## [1.0.0] - 2026-10-23
 
 First release, for TeamCraft 1.0.0 (`teamcraft_version: "1.0.0"`).

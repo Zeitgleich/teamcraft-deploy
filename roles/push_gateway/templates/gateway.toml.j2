@@ -1,0 +1,28 @@
+# Managed by Ansible (teamcraft-deploy, role push_gateway). The APNs key and the FCM service account
+# come from podman secrets (TEAMCRAFT_PUSH_GATEWAY__APNS__KEY, ..__FCM__SERVICE_ACCOUNT).
+[server]
+bind = "127.0.0.1:{{ push_gateway_port }}"
+health_bind = "127.0.0.1:{{ push_gateway_health_port }}"
+# Caddy sets the client address; the last entry is the one it appended.
+client_ip_header = "x-forwarded-for"
+
+[database]
+path = "/var/lib/teamcraft-push-gateway/gateway.db"
+
+[registration]
+mode = "{{ push_gateway_registration_mode }}"
+{% if push_gateway_limits | length > 0 %}
+
+[limits]
+{% for name, value in push_gateway_limits.items() %}
+{{ name }} = {{ value | to_json }}
+{% endfor %}
+{% endif %}
+{% if push_gateway_apns_key | length > 0 %}
+
+[apns]
+key_id = "{{ push_gateway_apns_key_id }}"
+team_id = "{{ push_gateway_apns_team_id }}"
+bundle_id = "{{ push_gateway_apns_bundle_id }}"
+use_sandbox = {{ push_gateway_apns_use_sandbox | bool | lower }}
+{% endif %}

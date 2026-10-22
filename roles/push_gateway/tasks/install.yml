@@ -1,0 +1,100 @@
+- name: Required settings are set
+  ansible.builtin.assert:
+    that:
+      - push_gateway_hostname | length > 0
+      - push_gateway_admin_email is match('.+@.+')
+      - push_gateway_apns_key | length > 0 or push_gateway_fcm_service_account | length > 0
+      - push_gateway_apns_key | length == 0 or (push_gateway_apns_key_id | length > 0 and push_gateway_apns_team_id | length > 0 and push_gateway_apns_bundle_id | length > 0)
+      - ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_major_version'] | int >= 13
+    fail_msg: >-
+      Set push_gateway_hostname, push_gateway_admin_email and the credentials of at least one provider
+      (push_gateway_apns_key with its key_id, team_id and bundle_id, and/or push_gateway_fcm_service_account);
+      Debian 13 or newer (docs/components/push-gateway.md).
+    quiet: true
+
+# Packages, rootless ports from 80, base directory, firewall (no SFU port on this host).
+- name: Base of the host
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: install
+
+- name: Gateway service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: teamcraft-push-gateway
+      user: tc-gateway
+      secrets: "{{ push_gateway_secrets | dict2items | selectattr('value') | items2dict }}"
+
+- name: Gateway configuration
+  ansible.builtin.template:
+    src: gateway.toml.j2
+    dest: /home/tc-gateway/config/gateway.toml
+    owner: tc-gateway
+    group: tc-gateway
+    # Read by the container's subordinate uid through the bind mount; credentials are podman secrets.
+    mode: "0644"
+  register: push_gateway_config
+
+- name: Gateway Quadlet unit
+  ansible.builtin.template:
+    src: teamcraft-push-gateway.container.j2
+    dest: /home/tc-gateway/.config/containers/systemd/teamcraft-push-gateway.container
+    owner: tc-gateway
+    group: tc-gateway
+    mode: "0644"
+  register: push_gateway_unit
+
+- name: Gateway restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: teamcraft-push-gateway
+    base_service_changed: "{{ push_gateway_unit.changed or push_gateway_config.changed or base_service_secrets_changed }}"
+
+- name: Proxy service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: push-gateway-caddy
+      user: tc-gwproxy
+
+- name: Proxy data directory
+  ansible.builtin.file:
+    path: /home/tc-gwproxy/caddy-data
+    state: directory
+    owner: tc-gwproxy
+    group: tc-gwproxy
+    mode: "0750"
+
+- name: Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /home/tc-gwproxy/config/Caddyfile
+    owner: tc-gwproxy
+    group: tc-gwproxy
+    # Read by the container's subordinate uid through the bind mount; holds no secrets.
+    mode: "0644"
+  register: push_gateway_caddyfile
+
+- name: Proxy Quadlet unit
+  ansible.builtin.template:
+    src: push-gateway-caddy.container.j2
+    dest: /home/tc-gwproxy/.config/containers/systemd/push-gateway-caddy.container
+    owner: tc-gwproxy
+    group: tc-gwproxy
+    mode: "0644"
+  register: push_gateway_proxy_unit
+
+- name: Proxy restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: push-gateway-caddy
+    base_service_changed: "{{ push_gateway_proxy_unit.changed or push_gateway_caddyfile.changed }}"

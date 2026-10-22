@@ -126,6 +126,13 @@ from_address = "{{ teamcraft_mail_from }}"
 
 [push]
 vapid_subject = "mailto:{{ teamcraft_admin_email }}"
+{% if teamcraft_push_gateway_url | length > 0 %}
+
+# APNs and FCM wake-ups of the store apps go through the publisher's push gateway; the key is the
+# podman secret push_gateway_key (TEAMCRAFT_PUSH__GATEWAY__KEY).
+[push.gateway]
+url = "{{ teamcraft_push_gateway_url }}"
+{% endif %}
 {% if teamcraft_server_extra_config | length > 0 %}
 
 {{ teamcraft_server_extra_config }}

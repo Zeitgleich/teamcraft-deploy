@@ -1,0 +1,21 @@
+# Managed by Ansible (teamcraft-deploy, role push_gateway). Runs rootless as tc-gwproxy.
+[Unit]
+Description=TeamCraft push gateway reverse proxy (TLS)
+
+[Container]
+Image={{ push_gateway_proxy_image }}
+ContainerName=teamcraft-push-gateway-caddy
+# Host network: binds 80/443 (net.ipv4.ip_unprivileged_port_start) and reaches the gateway on loopback.
+Network=host
+Volume=/home/tc-gwproxy/config/Caddyfile:/etc/caddy/Caddyfile:ro,Z
+Volume=/home/tc-gwproxy/caddy-data:/data:Z
+NoNewPrivileges=true
+PodmanArgs=--memory=128m
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=default.target
