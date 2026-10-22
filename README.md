@@ -38,6 +38,7 @@ just self-check
 | [TeamCraft SFU](docs/components/teamcraft-sfu.md)       | on                    | `tc-sfu`      | `teamcraft_sfu_enabled`    |
 | [Keycloak](docs/components/keycloak.md)                 | on (or external OIDC) | `tc-keycloak` | `keycloak_enabled`         |
 | [Garage](docs/components/garage.md)                     | on (or external S3)   | `tc-garage`   | `garage_enabled`           |
+| [Push gateway](docs/components/push-gateway.md)         | off (own host)        | `tc-gateway`  | `push_gateway_enabled`     |
 | [Mail relay](docs/components/mail.md)                   | off (external SMTP)   | –             | `teamcraft_smtp_enabled`   |
 | [CalCraft](docs/components/calcraft.md)                 | off                   | `tc-calcraft` | `calcraft_enabled`         |
 | [Brands](docs/components/branding.md)                   | one built-in          | –             | `teamcraft_brands`         |

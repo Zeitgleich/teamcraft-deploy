@@ -1,0 +1,40 @@
+- name: Users
+  ansible.builtin.getent:
+    database: passwd
+
+- name: Services are active
+  # noqa: command-instead-of-module  # the module can't fail a check on an inactive unit by itself
+  ansible.builtin.command: systemctl --user is-active {{ item.name }}.service
+  become: true
+  become_user: "{{ item.user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[item.user][1] }}"
+  loop:
+    - {name: teamcraft-push-gateway, user: tc-gateway}
+    - {name: push-gateway-caddy, user: tc-gwproxy}
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: false
+
+- name: Health answers on loopback
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ push_gateway_health_port }}/healthz"
+
+- name: Public info document, from the control machine
+  ansible.builtin.uri:
+    url: "https://{{ push_gateway_hostname }}/api/v1/info"
+    validate_certs: "{{ push_gateway_tls == 'acme' }}"
+    return_content: true
+  delegate_to: localhost
+  become: false
+  register: push_gateway_info
+  failed_when: push_gateway_info.json.providers | length == 0
+
+- name: Health and metrics are not public
+  ansible.builtin.uri:
+    url: "https://{{ push_gateway_hostname }}{{ item }}"
+    status_code: 404
+    validate_certs: "{{ push_gateway_tls == 'acme' }}"
+  delegate_to: localhost
+  become: false
+  loop: [/healthz, /metrics]

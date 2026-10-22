@@ -14,7 +14,9 @@ table inet filter {
 		tcp dport {{ base_firewall_ssh_port }} accept
 		tcp dport { 80, 443 } accept
 		udp dport 443 accept comment "HTTP/3"
+{% if base_firewall_open_sfu %}
 		udp dport {{ teamcraft_ports.sfu }} accept comment "SFU (QUIC)"
+{% endif %}
 {% for rule in base_firewall_extra_ports %}
 		{{ rule.proto }} dport {{ rule.port }} accept
 {% endfor %}

@@ -1,0 +1,46 @@
+- name: Install
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [setup-all, install-all, setup-push-gateway, install-push-gateway]
+  when: push_gateway_enabled
+  tags: [setup-all, install-all, setup-push-gateway, install-push-gateway]
+
+- name: Uninstall
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_remove
+    apply:
+      tags: [setup-all, setup-push-gateway]
+  vars:
+    base_service_name: "{{ item.name }}"
+    base_service_user: "{{ item.user }}"
+  loop:
+    - {name: push-gateway-caddy, user: tc-gwproxy}
+    - {name: teamcraft-push-gateway, user: tc-gateway}
+  when: not push_gateway_enabled
+  tags: [setup-all, setup-push-gateway]
+
+- name: Start
+  ansible.builtin.include_tasks:
+    file: start.yml
+    apply:
+      tags: [start]
+  when: push_gateway_enabled
+  tags: [start]
+
+- name: Stop
+  ansible.builtin.include_tasks:
+    file: stop.yml
+    apply:
+      tags: [stop]
+  when: push_gateway_enabled
+  tags: [never, stop]
+
+- name: Self-check
+  ansible.builtin.include_tasks:
+    file: check.yml
+    apply:
+      tags: [self-check]
+  when: push_gateway_enabled
+  tags: [never, self-check]

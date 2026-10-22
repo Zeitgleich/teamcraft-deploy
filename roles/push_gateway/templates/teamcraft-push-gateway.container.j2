@@ -1,0 +1,45 @@
+# Managed by Ansible (teamcraft-deploy, role push_gateway). Runs rootless as tc-gateway.
+[Unit]
+Description=TeamCraft push gateway (APNs and FCM)
+
+[Container]
+Image={{ push_gateway_image }}
+Pull=missing
+ContainerName=teamcraft-push-gateway
+# Host network inside tc-gateway's user namespace; loopback only (Caddy terminates TLS).
+Network=host
+Volume=/home/tc-gateway/config/gateway.toml:/etc/teamcraft-push-gateway/gateway.toml:ro,Z
+# SQLite state (servers, block list, daily counters). Named volume: the container's root is tc-gateway.
+Volume=gateway-data:/var/lib/teamcraft-push-gateway
+Environment=TEAMCRAFT_PUSH_GATEWAY_CONFIG=/etc/teamcraft-push-gateway/gateway.toml
+# The image binds all addresses (for containers with their own network); this unit shares the host's,
+# so the variables are set to loopback here and Caddy is the only way in.
+Environment=TEAMCRAFT_PUSH_GATEWAY__SERVER__BIND=127.0.0.1:{{ push_gateway_port }}
+Environment=TEAMCRAFT_PUSH_GATEWAY__SERVER__HEALTH_BIND=127.0.0.1:{{ push_gateway_health_port }}
+{% if push_gateway_apns_key | length > 0 %}
+Secret=apns_key,type=env,target=TEAMCRAFT_PUSH_GATEWAY__APNS__KEY
+{% endif %}
+{% if push_gateway_fcm_service_account | length > 0 %}
+Secret=fcm_service_account,type=env,target=TEAMCRAFT_PUSH_GATEWAY__FCM__SERVICE_ACCOUNT
+{% endif %}
+Environment=RUST_LOG={{ push_gateway_log_filter }}
+Environment=NO_COLOR=1
+User=0
+Group=0
+DropCapability=ALL
+NoNewPrivileges=true
+ReadOnly=true
+RunInit=yes
+# Exec form (JSON): the distroless image has no shell for the string form.
+HealthCmd=["/usr/local/bin/teamcraft-push-gateway", "healthcheck"]
+HealthInterval=30s
+PodmanArgs=--memory={{ push_gateway_memory }}
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=5s
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target
