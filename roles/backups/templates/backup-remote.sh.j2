@@ -1,0 +1,23 @@
+#!/bin/sh
+# Managed by Ansible (teamcraft-deploy, role backups). Runs as tc-db: copies the dumps and the
+# attachment bucket (ciphertext only) to {{ backups_remote_bucket }} at {{ backups_remote_endpoint }}.
+set -eu
+rclone() {
+  podman run --rm --network host --userns keep-id \
+    -v "{{ teamcraft_backup_dir }}/postgres:/dumps:ro" \
+    --secret backup_source_access_key,type=env,target=RCLONE_CONFIG_SRC_ACCESS_KEY_ID \
+    --secret backup_source_secret_key,type=env,target=RCLONE_CONFIG_SRC_SECRET_ACCESS_KEY \
+    --secret backup_remote_access_key,type=env,target=RCLONE_CONFIG_DST_ACCESS_KEY_ID \
+    --secret backup_remote_secret_key,type=env,target=RCLONE_CONFIG_DST_SECRET_ACCESS_KEY \
+    -e RCLONE_CONFIG_SRC_TYPE=s3 -e RCLONE_CONFIG_SRC_PROVIDER=Other \
+    -e RCLONE_CONFIG_SRC_ENDPOINT="{{ ('http://127.0.0.1:' ~ teamcraft_ports.garage_s3) if garage_enabled else teamcraft_s3_endpoint }}" \
+    -e RCLONE_CONFIG_SRC_REGION="{{ teamcraft_s3_region }}" \
+    -e RCLONE_CONFIG_SRC_FORCE_PATH_STYLE="{{ teamcraft_s3_path_style | bool | lower }}" \
+    -e RCLONE_CONFIG_DST_TYPE=s3 -e RCLONE_CONFIG_DST_PROVIDER=Other \
+    -e RCLONE_CONFIG_DST_ENDPOINT="{{ backups_remote_endpoint }}" \
+    -e RCLONE_CONFIG_DST_REGION="{{ backups_remote_region }}" \
+    -e RCLONE_CONFIG_DST_FORCE_PATH_STYLE="{{ backups_remote_path_style | bool | lower }}" \
+    "{{ backups_rclone_image }}" "$@"
+}
+rclone sync /dumps "dst:{{ backups_remote_bucket }}/postgres"
+rclone sync "src:{{ teamcraft_s3_bucket }}" "dst:{{ backups_remote_bucket }}/attachments"

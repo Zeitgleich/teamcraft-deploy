@@ -1,0 +1,82 @@
+- name: Service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: caddy
+      user: tc-proxy
+      groups: [tc-certs]
+
+- name: Certificate directory (written here, read by the SFU)
+  ansible.builtin.file:
+    path: "{{ teamcraft_cert_dir }}"
+    state: directory
+    owner: tc-proxy
+    group: tc-certs
+    mode: "0750"
+
+# Must exist before the container starts: it is a bind mount.
+- name: Data and script directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: tc-proxy
+    group: tc-proxy
+    mode: "0750"
+  loop: [/home/tc-proxy/caddy-data, /home/tc-proxy/bin]
+
+- name: Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /home/tc-proxy/config/Caddyfile
+    owner: tc-proxy
+    group: tc-proxy
+    # Read by the container's subordinate uid through the bind mount; holds no secrets.
+    mode: "0644"
+  register: caddy_config
+
+- name: Quadlet unit
+  ansible.builtin.template:
+    src: caddy.container.j2
+    dest: /home/tc-proxy/.config/containers/systemd/caddy.container
+    owner: tc-proxy
+    group: tc-proxy
+    mode: "0644"
+  register: caddy_unit
+
+- name: Restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: caddy
+    base_service_changed: "{{ caddy_unit.changed or caddy_config.changed }}"
+
+- name: SFU certificate export script
+  ansible.builtin.template:
+    src: sfu-cert-export.sh.j2
+    dest: /home/tc-proxy/bin/sfu-cert-export.sh
+    owner: tc-proxy
+    group: tc-proxy
+    mode: "0750"
+
+- name: SFU certificate export service and timer
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/home/tc-proxy/.config/systemd/user/{{ item }}"
+    owner: tc-proxy
+    group: tc-proxy
+    mode: "0644"
+  loop: [sfu-cert-export.service, sfu-cert-export.timer]
+
+- name: SFU certificate export timer enabled
+  ansible.builtin.systemd_service:
+    name: sfu-cert-export.timer
+    state: started
+    enabled: true
+    daemon_reload: true
+    scope: user
+  become: true
+  become_user: tc-proxy
+  environment: "{{ base_service_env }}"

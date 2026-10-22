@@ -1,0 +1,19 @@
+- name: Install
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [setup-all, install-all, setup-teamcraft-server, install-teamcraft-server]
+  when: teamcraft_server_enabled
+  tags: [setup-all, install-all, setup-teamcraft-server, install-teamcraft-server]
+
+- name: Uninstall
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_remove
+    apply:
+      tags: [setup-all, setup-teamcraft-server]
+  vars:
+    base_service_name: teamcraft-server
+    base_service_user: tc-server
+  when: not teamcraft_server_enabled
+  tags: [setup-all, setup-teamcraft-server]

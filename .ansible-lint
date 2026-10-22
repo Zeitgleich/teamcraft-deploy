@@ -1,0 +1,6 @@
+# ansible-lint (CI: .github/workflows/ci.yml)
+profile: production
+exclude_paths:
+  - inventory/
+  - .ansible/
+  - .github/

@@ -1,0 +1,10 @@
+- name: Users
+  ansible.builtin.getent:
+    database: passwd
+
+- name: Each service
+  ansible.builtin.include_tasks: start_one.yml
+  loop: "{{ teamcraft_services | selectattr('enabled') | list }}"
+  loop_control:
+    loop_var: services_item
+    label: "{{ services_item.name }}"

@@ -1,0 +1,12 @@
+#!/bin/sh
+# Managed by Ansible (teamcraft-deploy, role backups). Runs as tc-db: one custom-format dump per
+# database (restore: docs/backups.md), then removes dumps older than {{ backups_keep_days }} days.
+set -eu
+umask 027
+dir="{{ teamcraft_backup_dir }}/postgres"
+stamp="$(date -u +%Y-%m-%dT%H%M%SZ)"
+for db in {{ postgres_databases | selectattr('enabled') | map(attribute='name') | join(' ') }}; do
+  podman exec teamcraft-postgres pg_dump -U postgres --format=custom "$db" > "$dir/$db-$stamp.dump.partial"
+  mv "$dir/$db-$stamp.dump.partial" "$dir/$db-$stamp.dump"
+done
+find "$dir" -name '*.dump' -mtime +{{ backups_keep_days }} -delete

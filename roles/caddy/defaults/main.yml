@@ -1,0 +1,14 @@
+# Reverse proxy and TLS for every public host name, rootless as tc-proxy (ports 80/443, HTTP/3).
+caddy_enabled: true
+caddy_image: "docker.io/library/caddy:2.11.7"
+caddy_memory: 256m
+# acme: certificates from Let's Encrypt (DNS and ports 80/443 reachable from the internet).
+# internal: Caddy's own CA (test targets; clients must trust its root, docs/components/caddy.md).
+caddy_tls: acme
+caddy_acme_email: "{{ teamcraft_admin_email }}"
+# Caddy's storage directory of each issuer (caddy-data/caddy/certificates/<dir>/<host>/).
+caddy_issuer_dirs:
+  acme: acme-v02.api.letsencrypt.org-directory
+  internal: local
+caddy_cert_dir: >-
+  /home/tc-proxy/caddy-data/caddy/certificates/{{ caddy_issuer_dirs[caddy_tls] }}

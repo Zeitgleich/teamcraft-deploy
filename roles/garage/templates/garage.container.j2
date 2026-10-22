@@ -1,0 +1,27 @@
+# Managed by Ansible (teamcraft-deploy, role garage). Runs rootless as tc-garage.
+[Unit]
+Description=TeamCraft attachment storage (Garage, S3)
+
+[Container]
+Image={{ garage_image }}
+ContainerName=teamcraft-garage
+# Host network inside tc-garage's user namespace; listens on loopback only (Caddy proxies S3).
+Network=host
+Exec=/garage server
+Volume=/home/tc-garage/config/garage.toml:/etc/garage.toml:ro,Z
+Volume=garage-meta:/var/lib/garage/meta
+Volume={{ garage_data_path if garage_data_path | length > 0 else 'garage-data' }}:/var/lib/garage/data{{ ':Z' if garage_data_path | length > 0 else '' }}
+Secret=garage_rpc_secret,type=mount,target=/run/secrets/garage_rpc_secret,mode=0400
+Secret=garage_admin_token,type=mount,target=/run/secrets/garage_admin_token,mode=0400
+NoNewPrivileges=true
+DropCapability=ALL
+PodmanArgs=--memory={{ garage_memory }}
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=5s
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

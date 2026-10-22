@@ -1,0 +1,55 @@
+- name: Postgres user environment
+  ansible.builtin.getent:
+    database: passwd
+    key: tc-db
+
+- name: Backup directory
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.owner }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - {path: "{{ teamcraft_backup_dir }}", owner: root, mode: "0755"}
+    - {path: "{{ teamcraft_backup_dir }}/postgres", owner: tc-db, mode: "0750"}
+
+- name: Postgres dump script
+  ansible.builtin.template:
+    src: backup-postgres.sh.j2
+    dest: /home/tc-db/config/backup-postgres.sh
+    owner: tc-db
+    group: tc-db
+    mode: "0750"
+
+- name: Postgres dump service and timer
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "/home/tc-db/.config/systemd/user/{{ item.dest }}"
+    owner: tc-db
+    group: tc-db
+    mode: "0644"
+  loop:
+    - {src: backup.service.j2, dest: teamcraft-backup-postgres.service}
+    - {src: backup.timer.j2, dest: teamcraft-backup-postgres.timer}
+  vars:
+    backups_unit_description: "TeamCraft: dump the databases"
+    backups_unit_command: /home/tc-db/config/backup-postgres.sh
+    backups_unit_schedule: "{{ backups_schedule }}"
+
+- name: Postgres dump timer enabled
+  ansible.builtin.systemd_service:
+    name: teamcraft-backup-postgres.timer
+    state: started
+    enabled: true
+    daemon_reload: true
+    scope: user
+  become: true
+  become_user: tc-db
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd['tc-db'][1] }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd['tc-db'][1] }}/bus"
+
+- name: Off-site copy
+  ansible.builtin.include_tasks: remote.yml
+  when: backups_remote_enabled

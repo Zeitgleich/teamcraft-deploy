@@ -1,0 +1,6 @@
+# The SFU (WebTransport media forwarding for calls), rootless as tc-sfu, public on
+# udp/{{ teamcraft_ports.sfu }} (IPv4 and IPv6) with the certificate Caddy obtains for teamcraft_sfu_hostname.
+teamcraft_sfu_enabled: true
+teamcraft_sfu_image: "{{ teamcraft_image_registry }}/teamcraft-sfu:{{ teamcraft_version }}"
+teamcraft_sfu_memory: 1g
+teamcraft_sfu_log_filter: info

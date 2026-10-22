@@ -1,0 +1,27 @@
+# Copy to inventory/host_vars/chat.example.com/vars.yml (the directory is named after the host in
+# inventory/hosts). These are the only required settings; every other one has a default in
+# roles/*/defaults/main.yml and can be overridden here (docs/configuring.md).
+
+# The host name of your TeamCraft instance. Further names are derived from it (DNS: docs/dns.md):
+# sfu.<domain> (calls), id.<domain> (bundled Keycloak), s3.<domain> (bundled Garage).
+teamcraft_domain: chat.example.com
+
+# Contact for Let's Encrypt and the sender of system mail.
+teamcraft_admin_email: admin@example.com
+
+# Identity provider. By default the playbook runs Keycloak for you (docs/components/keycloak.md).
+# To use an existing OIDC provider instead:
+# keycloak_enabled: false
+# teamcraft_oidc_issuer: https://id.example.com/realms/example
+# teamcraft_oidc_client_id: teamcraft
+
+# Attachment storage. By default the playbook runs Garage (docs/components/garage.md). External S3:
+# garage_enabled: false
+# teamcraft_s3_endpoint: https://s3.example.com
+# teamcraft_s3_region: eu-central-1
+# teamcraft_s3_bucket: teamcraft
+# (keys: teamcraft_s3_access_key / teamcraft_s3_secret_key, preferably from a sops file, below)
+
+# Secrets are generated on the server on the first run (/srv/teamcraft/secrets). To keep some or
+# all of them in a sops + age encrypted file on your machine instead (docs/configuring.md):
+# base_secrets_sops_file: "{{ inventory_dir }}/host_vars/chat.example.com/secrets.sops.yml"

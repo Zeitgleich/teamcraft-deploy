@@ -1,0 +1,27 @@
+# Helper: a disabled component is stopped and its unit removed. Its data (volumes, home directory)
+# stays; docs/uninstalling.md says how to remove it for good. In: base_service_name, base_service_user
+- name: "Existing user: {{ base_service_name }}"
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ base_service_user }}"
+    fail_key: false
+
+- name: "Stop and remove: {{ base_service_name }}"
+  when: ansible_facts.getent_passwd[base_service_user] is not none
+  block:
+    - name: "Stopped: {{ base_service_name }}"
+      ansible.builtin.systemd_service:
+        name: "{{ base_service_name }}.service"
+        state: stopped
+        scope: user
+      become: true
+      become_user: "{{ base_service_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[base_service_user][1] }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd[base_service_user][1] }}/bus"
+      failed_when: false
+
+    - name: "Unit removed: {{ base_service_name }}"
+      ansible.builtin.file:
+        path: "/home/{{ base_service_user }}/.config/containers/systemd/{{ base_service_name }}.container"
+        state: absent

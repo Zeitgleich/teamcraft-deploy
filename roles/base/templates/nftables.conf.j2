@@ -1,0 +1,28 @@
+#!/usr/sbin/nft -f
+# Managed by Ansible (teamcraft-deploy, role base). IPv4 and IPv6 (inet family).
+flush ruleset
+
+table inet filter {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		ct state established,related accept
+		ct state invalid drop
+		iif lo accept
+		# ICMPv6 is required for IPv6 to work at all (neighbour discovery, path MTU).
+		meta l4proto ipv6-icmp accept
+		meta l4proto icmp accept
+		tcp dport {{ base_firewall_ssh_port }} accept
+		tcp dport { 80, 443 } accept
+		udp dport 443 accept comment "HTTP/3"
+		udp dport {{ teamcraft_ports.sfu }} accept comment "SFU (QUIC)"
+{% for rule in base_firewall_extra_ports %}
+		{{ rule.proto }} dport {{ rule.port }} accept
+{% endfor %}
+	}
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+	}
+	chain output {
+		type filter hook output priority filter; policy accept;
+	}
+}

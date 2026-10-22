@@ -1,0 +1,19 @@
+- name: Install
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [setup-all, install-all, setup-teamcraft-sfu, install-teamcraft-sfu]
+  when: teamcraft_sfu_enabled
+  tags: [setup-all, install-all, setup-teamcraft-sfu, install-teamcraft-sfu]
+
+- name: Uninstall
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_remove
+    apply:
+      tags: [setup-all, setup-teamcraft-sfu]
+  vars:
+    base_service_name: teamcraft-sfu
+    base_service_user: tc-sfu
+  when: not teamcraft_sfu_enabled
+  tags: [setup-all, setup-teamcraft-sfu]

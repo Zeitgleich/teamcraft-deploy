@@ -1,0 +1,7 @@
+# Managed by Ansible (teamcraft-deploy, role backups).
+[Unit]
+Description={{ backups_unit_description }}
+
+[Service]
+Type=oneshot
+ExecStart={{ backups_unit_command }}

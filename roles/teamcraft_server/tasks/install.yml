@@ -1,0 +1,69 @@
+- name: Service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: teamcraft-server
+      user: tc-server
+      secrets: "{{ teamcraft_server_secrets | dict2items | selectattr('value') | items2dict }}"
+
+- name: Configuration
+  ansible.builtin.template:
+    src: teamcraft.toml.j2
+    dest: /home/tc-server/config/teamcraft.toml
+    owner: tc-server
+    group: tc-server
+    # Read by the container's subordinate uid through the bind mount; secrets are podman secrets.
+    mode: "0644"
+  register: teamcraft_server_config
+
+- name: Web client
+  when: teamcraft_server_web_enabled
+  block:
+    - name: Web client directory
+      ansible.builtin.file:
+        path: /home/tc-server/web
+        state: directory
+        owner: tc-server
+        group: tc-server
+        mode: "0755"
+
+    - name: Web client archive
+      ansible.builtin.get_url:
+        url: "{{ teamcraft_server_web_url }}"
+        dest: "/home/tc-server/teamcraft-web-{{ teamcraft_version }}.tar.gz"
+        checksum: "{{ teamcraft_server_web_checksum }}"
+        owner: tc-server
+        group: tc-server
+        mode: "0644"
+      register: teamcraft_server_web_archive
+
+    # Unpacked only when a new archive was downloaded (no handler: it must happen before the restart).
+    - name: Web client files  # noqa: no-handler
+      ansible.builtin.unarchive:
+        src: "/home/tc-server/teamcraft-web-{{ teamcraft_version }}.tar.gz"
+        dest: /home/tc-server/web
+        remote_src: true
+        owner: tc-server
+        group: tc-server
+      when: teamcraft_server_web_archive.changed
+
+- name: Quadlet unit
+  ansible.builtin.template:
+    src: teamcraft-server.container.j2
+    dest: /home/tc-server/.config/containers/systemd/teamcraft-server.container
+    owner: tc-server
+    group: tc-server
+    mode: "0644"
+  register: teamcraft_server_unit
+
+- name: Restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: teamcraft-server
+    base_service_changed: >-
+      {{ teamcraft_server_unit.changed or teamcraft_server_config.changed or base_service_secrets_changed
+         or (teamcraft_server_web_archive.changed | default(false)) }}

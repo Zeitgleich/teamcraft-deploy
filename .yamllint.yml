@@ -1,0 +1,20 @@
+# yamllint (CI: .github/workflows/ci.yml).
+extends: default
+rules:
+  line-length:
+    max: 160
+  truthy:
+    check-keys: false
+  # ansible-lint's preferred settings for files it also checks.
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: false
+  braces:
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
+  document-start: disable
+ignore: |
+  inventory/
+  .ansible/

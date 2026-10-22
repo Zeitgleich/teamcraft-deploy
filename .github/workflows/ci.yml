@@ -1,0 +1,94 @@
+name: CI
+
+# Lint on every push and pull request; the end-to-end dry run (test/dry-run.sh) on pull requests,
+# nightly and on demand. The dry run builds the TeamCraft images from the app repository's main
+# branch (or the ref given when started by hand).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "41 3 * * *"
+  workflow_dispatch:
+    inputs:
+      teamcraft_ref:
+        description: TeamCraft ref to build the images and the e2e harness from
+        default: main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  ANSIBLE_LINT_VERSION: "25.12.2"
+  YAMLLINT_VERSION: "1.38.0"
+
+jobs:
+  lint:
+    name: yamllint + ansible-lint + shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Linters
+        run: pip install "ansible-lint==${ANSIBLE_LINT_VERSION}" "yamllint==${YAMLLINT_VERSION}"
+      - name: Collections
+        run: ansible-galaxy collection install -r requirements.yml
+      - name: yamllint
+        run: yamllint --strict .
+      - name: ansible-lint (production profile)
+        run: ansible-lint
+      - name: shellcheck
+        run: shellcheck test/dry-run.sh
+
+  dry-run:
+    name: Dry run (systemd container target)
+    if: github.event_name != 'push'
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CARGO_TERM_COLOR: always
+      TEAMCRAFT_REPO: ${{ github.workspace }}/teamcraft
+    steps:
+      - name: Free disk space on the runner
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+      - uses: actions/checkout@v5
+        with:
+          path: deploy
+      - uses: actions/checkout@v5
+        with:
+          repository: Zeitgleich/TeamCraft
+          ref: ${{ inputs.teamcraft_ref || 'main' }}
+          path: teamcraft
+          # While the TeamCraft repository is private: a read-only token for it in this secret.
+          token: ${{ secrets.TEAMCRAFT_READ_TOKEN || github.token }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: teamcraft
+      - name: System packages (e2e harness build)
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libclang-dev cmake pkg-config libssl-dev
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Ansible
+        working-directory: deploy
+        run: pip install ansible-core && ansible-galaxy collection install -r requirements.yml
+      - name: Dry run
+        working-directory: deploy
+        run: test/dry-run.sh all
+      - name: Logs of the target on failure
+        if: failure()
+        run: |
+          docker exec tc-dryrun-target sh -c 'for u in tc-db tc-garage tc-keycloak tc-proxy tc-server tc-sfu; do
+            echo "== $u"; XDG_RUNTIME_DIR=/run/user/$(id -u $u) runuser -u $u -- journalctl --user -n 80 --no-pager; done' || true
+      - name: Remove the target
+        if: always()
+        working-directory: deploy
+        run: test/dry-run.sh down

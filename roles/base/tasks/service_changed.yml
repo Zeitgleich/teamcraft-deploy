@@ -1,0 +1,6 @@
+# Helper: remember that a service's unit, configuration or secrets changed, so `start` restarts it.
+# In: base_service_name, base_service_changed
+- name: "Restart needed: {{ base_service_name }}"
+  ansible.builtin.set_fact:
+    base_restart_needed: "{{ (base_restart_needed | default([])) + [base_service_name] }}"
+  when: base_service_changed | bool

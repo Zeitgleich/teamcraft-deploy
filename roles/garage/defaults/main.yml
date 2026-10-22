@@ -1,0 +1,13 @@
+# Bundled S3 storage for encrypted attachments: a single-node Garage, rootless as tc-garage, behind
+# Caddy at garage_hostname. Disable it to use an external S3 provider (docs/components/garage.md).
+# garage_enabled and garage_hostname are set in group_vars/teamcraft_servers.yml.
+garage_image: "docker.io/dxflrs/garage:v2.4.0"
+garage_memory: 512m
+garage_region: garage
+# Capacity announced in the cluster layout (not a hard limit; size it to the disk).
+garage_capacity: 100G
+# Host directory for the object data; empty keeps it in a podman volume of tc-garage.
+garage_data_path: ""
+garage_bucket: "{{ teamcraft_s3_bucket }}"
+# Further buckets the same key may use, e.g. a backup target on another host's Garage.
+garage_extra_buckets: []

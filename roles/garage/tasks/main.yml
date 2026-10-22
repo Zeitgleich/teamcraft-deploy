@@ -1,0 +1,19 @@
+- name: Install
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [setup-all, install-all, setup-garage, install-garage]
+  when: garage_enabled
+  tags: [setup-all, install-all, setup-garage, install-garage]
+
+- name: Uninstall
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_remove
+    apply:
+      tags: [setup-all, setup-garage]
+  vars:
+    base_service_name: garage
+    base_service_user: tc-garage
+  when: not garage_enabled
+  tags: [setup-all, setup-garage]

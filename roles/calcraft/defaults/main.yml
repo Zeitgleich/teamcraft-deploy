@@ -1,0 +1,6 @@
+# Optional bundled CalDAV server for meetings (CalCraft), rootless as tc-calcraft, behind Caddy at
+# calcraft_hostname. CalCraft publishes no image: build one (docs/components/calcraft.md) and set
+# calcraft_image. Without it, meetings work without a calendar, or use an external CalDAV server.
+calcraft_enabled: false
+calcraft_image: ""
+calcraft_memory: 512m

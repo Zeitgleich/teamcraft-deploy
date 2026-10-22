@@ -1,0 +1,58 @@
+- name: Settings for the off-site copy
+  ansible.builtin.assert:
+    that:
+      - backups_remote_endpoint | length > 0
+      - backups_remote_bucket | length > 0
+      - backups_remote_access_key | length > 0
+      - backups_remote_secret_key | length > 0
+    fail_msg: "backups_remote_enabled needs endpoint, bucket and keys (docs/backups.md)."
+    quiet: true
+
+# Runs as tc-db, which owns the dumps; it gets the S3 keys of both sides as podman secrets.
+- name: S3 keys for the copy
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: backups
+      user: tc-db
+      secrets:
+        backup_source_access_key: "{{ teamcraft_s3_access_key }}"
+        backup_source_secret_key: "{{ teamcraft_s3_secret_key }}"
+        backup_remote_access_key: "{{ backups_remote_access_key }}"
+        backup_remote_secret_key: "{{ backups_remote_secret_key }}"
+
+- name: Copy script
+  ansible.builtin.template:
+    src: backup-remote.sh.j2
+    dest: /home/tc-db/config/backup-remote.sh
+    owner: tc-db
+    group: tc-db
+    mode: "0750"
+
+- name: Copy service and timer
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "/home/tc-db/.config/systemd/user/{{ item.dest }}"
+    owner: tc-db
+    group: tc-db
+    mode: "0644"
+  loop:
+    - {src: backup.service.j2, dest: teamcraft-backup-remote.service}
+    - {src: backup.timer.j2, dest: teamcraft-backup-remote.timer}
+  vars:
+    backups_unit_description: "TeamCraft: copy dumps and attachments off-site"
+    backups_unit_command: /home/tc-db/config/backup-remote.sh
+    backups_unit_schedule: "{{ backups_remote_schedule }}"
+
+- name: Copy timer enabled
+  ansible.builtin.systemd_service:
+    name: teamcraft-backup-remote.timer
+    state: started
+    enabled: true
+    daemon_reload: true
+    scope: user
+  become: true
+  become_user: tc-db
+  environment: "{{ base_service_env }}"

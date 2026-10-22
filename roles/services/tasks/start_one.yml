@@ -1,0 +1,43 @@
+- name: "Running: {{ services_item.name }}"
+  ansible.builtin.systemd_service:
+    name: "{{ services_item.name }}.service"
+    state: "{{ 'restarted' if services_item.name in (base_restart_needed | default([])) else 'started' }}"
+    daemon_reload: true
+    scope: user
+  become: true
+  become_user: "{{ services_item.user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[services_item.user][1] }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd[services_item.user][1] }}/bus"
+
+# The SFU starts next and needs the certificate: Caddy obtains it within seconds (internal CA) or a
+# minute (Let's Encrypt), the export copies it to the shared directory.
+- name: "SFU certificate: {{ services_item.name }}"
+  when: services_item.name == 'caddy' and teamcraft_sfu_enabled
+  block:
+    - name: Wait for Caddy's SFU certificate
+      ansible.builtin.wait_for:
+        path: "{{ caddy_cert_dir }}/{{ teamcraft_sfu_hostname }}/{{ teamcraft_sfu_hostname }}.crt"
+        timeout: 300
+
+    - name: Export it now
+      ansible.builtin.systemd_service:
+        name: sfu-cert-export.service
+        state: started
+        scope: user
+      become: true
+      become_user: tc-proxy
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd['tc-proxy'][1] }}"
+        DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd['tc-proxy'][1] }}/bus"
+      changed_when: false
+
+# Sign-in needs it: wait until the realm answers (a cold start takes up to a minute).
+- name: "Ready: {{ services_item.name }}"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ teamcraft_ports.keycloak }}/realms/{{ keycloak_realm }}/.well-known/openid-configuration"
+  register: services_keycloak_ready
+  until: services_keycloak_ready.status == 200
+  retries: 60
+  delay: 5
+  when: services_item.name == 'keycloak'

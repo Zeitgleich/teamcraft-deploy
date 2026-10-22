@@ -1,0 +1,3 @@
+# just self-check: checks the running instance from the control machine (as clients see it) and on
+# the host. Set to false only for test targets with a private CA.
+self_check_validate_certs: true

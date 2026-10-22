@@ -1,5 +1,0 @@
-# Secrets are encrypted with sops + age. Add each operator's age public key here.
-creation_rules:
-  - path_regex: secrets/.*\.enc\.ya?ml$
-    age: >-
-      age1replace_with_operator_public_key

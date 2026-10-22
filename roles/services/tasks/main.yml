@@ -1,0 +1,15 @@
+# Starts the enabled services in order, restarting those whose unit, configuration or secrets
+# changed in this run (just install-all runs it after installing).
+- name: Start
+  ansible.builtin.include_tasks:
+    file: start.yml
+    apply:
+      tags: [start]
+  tags: [start]
+
+- name: Stop
+  ansible.builtin.include_tasks:
+    file: stop.yml
+    apply:
+      tags: [stop]
+  tags: [never, stop]

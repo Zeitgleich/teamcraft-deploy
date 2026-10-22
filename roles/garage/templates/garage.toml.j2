@@ -1,0 +1,17 @@
+# Managed by Ansible (teamcraft-deploy, role garage). Single node; secrets are podman secrets.
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "lmdb"
+replication_factor = 1
+
+rpc_bind_addr = "127.0.0.1:{{ teamcraft_ports.garage_rpc }}"
+rpc_public_addr = "127.0.0.1:{{ teamcraft_ports.garage_rpc }}"
+rpc_secret_file = "/run/secrets/garage_rpc_secret"
+
+[s3_api]
+s3_region = "{{ garage_region }}"
+api_bind_addr = "127.0.0.1:{{ teamcraft_ports.garage_s3 }}"
+
+[admin]
+api_bind_addr = "127.0.0.1:{{ teamcraft_ports.garage_admin }}"
+admin_token_file = "/run/secrets/garage_admin_token"

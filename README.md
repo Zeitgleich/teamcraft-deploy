@@ -1,69 +1,54 @@
-# teamcraft-deploy
+# TeamCraft deployment
 
-Private deployment configuration for a TeamCraft instance. The application code lives in the
-`teamcraft` monorepo; this repository only describes **where and how** it runs.
+An Ansible playbook that installs [TeamCraft](https://github.com/Zeitgleich/TeamCraft) – self-hosted,
+end-to-end encrypted team chat with calls and meetings – on your own Debian server. Every component
+runs as a rootless Podman container under its own unprivileged user, managed by systemd through
+Quadlet. IPv4 and IPv6 throughout.
 
-| Path                                               | Content                                                     |
-|----------------------------------------------------|-------------------------------------------------------------|
-| `ansible/`                                         | Playbook + role that deploys TeamCraft with rootless Podman |
-| `ansible/roles/teamcraft/templates/*.container.j2` | Quadlet units, one per service                              |
-| `secrets/`                                         | sops-encrypted secrets (`*.enc.yaml`), never plaintext      |
-| `.sops.yaml`                                       | Which age keys can decrypt the secrets                      |
-| `test/dry-run.sh`                                  | End-to-end dry run against a throwaway local target         |
-
-## Runtime model: rootless Podman + Quadlet, one user per service
-
-Every service runs as its **own unprivileged user** with its own subuid range, its own systemd
-`--user` instance (lingering) and only the podman secrets it needs. Quadlet turns the
-`.container` files into native systemd units, so `systemctl --user status` and `journalctl` work as
-for any other service.
-
-| Service            | User        | Network                                | Secrets it gets                                                        |
-|--------------------|-------------|----------------------------------------|------------------------------------------------------------------------|
-| `caddy`            | `tc-proxy`  | host, 80/443 tcp+udp                   | none                                                                   |
-| `teamcraft-server` | `tc-server` | host, 127.0.0.1:8080                   | database URL, S3 keys, SFU token, call signing key, guest token secret |
-| `teamcraft-sfu`    | `tc-sfu`    | host, 4433/udp; 127.0.0.1:8081 control | SFU registration token                                                 |
-| `postgres`         | `tc-db`     | host, 127.0.0.1:5432                   | DB password                                                            |
-
-Why host networking: rootless containers of different users can't share a podman network, and the
-SFU shouldn't pay the per-packet cost of user-mode networking. Each container still runs in its
-own user namespace; internal services bind to loopback only.
-
-Hardening: images pinned by digest, `DropCapability=ALL`, `NoNewPrivileges`, read-only root
-filesystem with noexec tmpfs, `RunInit=yes`, memory limits, journald logging.
-
-**Dual stack:** everything reachable from outside listens on IPv4 and IPv6 – Caddy binds both by
-default, the SFU uses a dual-stack `[::]` socket. Requirements: an IPv6 address on the VPS, A **and**
-AAAA records for both host names, firewall rules for both families (`net.ipv4.ip_unprivileged_port_start`
-also applies to IPv6). Loopback-only services stay on 127.0.0.1.
-
-The SFU certificate is obtained by Caddy; a `tc-proxy` timer copies it to `/srv/teamcraft/certs`
-(group `tc-certs`), which `tc-sfu` reads.
-
-Not on the VPS: the OIDC provider (separate server), S3 (external provider), optional
-`teamcraft-bridge` / `teamcraft-vault` (trusted hosts), optional `teamcraft-pbx`.
-
-## Secrets
+You need a Debian 13 server, a domain name and about 15 minutes.
 
 ```sh
-sops secrets/production.enc.yaml
+git clone https://github.com/Zeitgleich/teamcraft-deploy.git && cd teamcraft-deploy
+mkdir -p inventory/host_vars/chat.example.com
+cp examples/hosts inventory/hosts                                       # your server's address
+cp examples/vars.yml inventory/host_vars/chat.example.com/vars.yml      # your domain, admin e-mail
+just install-all                                                        # install and start
+just ensure-admin alice 'a long password'                               # first user (owner)
+just self-check
 ```
 
-Expected keys: [secrets/README.md](secrets/README.md). The playbook decrypts them on the control
-machine and creates podman secrets per service user – no env files with secrets on disk.
+| Guide                                   | Content                                                           |
+|-----------------------------------------|-------------------------------------------------------------------|
+| [Prerequisites](docs/prerequisites.md)  | Server, software on your machine, firewall                        |
+| [DNS](docs/dns.md)                      | The host names and records (A + AAAA, the SFU's UDP port)         |
+| [Configuring](docs/configuring.md)      | Inventory, the few required settings, secrets (generated or sops) |
+| [Installing](docs/installing.md)        | Running the playbook, tags, the first user                        |
+| [Updating](docs/updating.md)            | New TeamCraft versions, `just update`                             |
+| [Backups](docs/backups.md)              | Database dumps, off-site copies, restore                          |
+| [Uninstalling](docs/uninstalling.md)    | Removing components or everything                                 |
+| [Components](docs/components/README.md) | One page per component and its settings                           |
 
-## Deploy
+## Components
 
-```sh
-ansible-galaxy collection install -r ansible/requirements.yml
-ansible-playbook -i ansible/inventories/production ansible/site.yml
-```
+| Component                                               | Default               | Runs as              | Toggle                     |
+|---------------------------------------------------------|-----------------------|----------------------|----------------------------|
+| [Caddy](docs/components/caddy.md)                       | on                    | `tc-proxy`           | `caddy_enabled`            |
+| [PostgreSQL](docs/components/postgres.md)               | on                    | `tc-db`              | `postgres_enabled`         |
+| [TeamCraft server](docs/components/teamcraft-server.md) | on                    | `tc-server`          | `teamcraft_server_enabled` |
+| [TeamCraft SFU](docs/components/teamcraft-sfu.md)       | on                    | `tc-sfu`             | `teamcraft_sfu_enabled`    |
+| [Keycloak](docs/components/keycloak.md)                 | on (or external OIDC) | `tc-keycloak`        | `keycloak_enabled`         |
+| [Garage](docs/components/garage.md)                     | on (or external S3)   | `tc-garage`          | `garage_enabled`           |
+| [Mail relay](docs/components/mail.md)                   | off (external SMTP)   | –                    | `teamcraft_smtp_enabled`   |
+| [CalCraft](docs/components/calcraft.md)                 | off                   | `tc-calcraft`        | `calcraft_enabled`         |
+| [Backups](docs/backups.md)                              | on                    | `tc-db` | `backups_enabled`          |
+| Base (users, Podman, firewall, secrets)                 | always                | root                 | `base_firewall_enabled`    |
 
-Versions and digests are pinned in `ansible/inventories/production/group_vars/all.yml`.
+## Testing changes
 
-## Dry run
+`just dry-run all` deploys to a throwaway Debian container on your machine and checks the result end
+to end, including two users exchanging encrypted messages ([test/dry-run.sh](test/dry-run.sh)). CI runs
+it, ansible-lint and yamllint on every pull request.
 
-`test/dry-run.sh all` deploys to a throwaway Debian trixie container on the local machine and
-checks the result (health over IPv4 and IPv6, internal API refused, SFU over QUIC, encrypted
-messages between two users through the teamcraft end-to-end harness). Details in the script's
-header; `test/dry-run.sh down` removes it. Run it after every change to the role.
+## License
+
+AGPL-3.0-or-later, like TeamCraft. See [LICENSE](LICENSE). Changes: [CHANGELOG.md](CHANGELOG.md).

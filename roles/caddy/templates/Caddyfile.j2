@@ -1,0 +1,71 @@
+# Managed by Ansible (teamcraft-deploy, role caddy).
+{
+	email {{ caddy_acme_email }}
+{% if caddy_tls == 'internal' %}
+	# The local CA's root stays in caddy-data; clients are given it by hand.
+	skip_install_trust
+{% endif %}
+}
+
+(tls) {
+{% if caddy_tls == 'internal' %}
+	tls internal
+{% endif %}
+}
+
+{{ teamcraft_domain }} {
+	import tls
+	encode zstd gzip
+	# Internal API (SFU reports, mail inbox): reached over loopback only, never from the internet.
+	respond /api/internal/* 404
+	reverse_proxy 127.0.0.1:{{ teamcraft_ports.server }}
+}
+
+# Certificate only; the SFU terminates QUIC itself on udp/{{ teamcraft_ports.sfu }}.
+{{ teamcraft_sfu_hostname }} {
+	import tls
+	respond "TeamCraft SFU" 200
+}
+{% if keycloak_enabled %}
+
+{{ keycloak_hostname }} {
+	import tls
+	encode zstd gzip
+{% if keycloak_admin_console_public %}
+	reverse_proxy 127.0.0.1:{{ teamcraft_ports.keycloak }}
+{% else %}
+	# What users and apps need; the admin console and admin API stay on loopback.
+	@public path /realms/* /resources/* /robots.txt
+	handle @public {
+		reverse_proxy 127.0.0.1:{{ teamcraft_ports.keycloak }}
+	}
+	handle {
+		respond 404
+	}
+{% endif %}
+}
+{% endif %}
+{% if garage_enabled %}
+
+# S3 for encrypted attachments; clients up- and download directly with presigned URLs. The web
+# client needs CORS, which Garage leaves to the bucket; answered here instead.
+{{ garage_hostname }} {
+	import tls
+	header Access-Control-Allow-Origin "https://{{ teamcraft_domain }}"
+	header Access-Control-Allow-Methods "GET, HEAD, PUT, POST, DELETE"
+	header Access-Control-Allow-Headers "*"
+	header Access-Control-Expose-Headers "ETag"
+	header Access-Control-Max-Age "3600"
+	@preflight method OPTIONS
+	respond @preflight 204
+	reverse_proxy 127.0.0.1:{{ teamcraft_ports.garage_s3 }}
+}
+{% endif %}
+{% if calcraft_enabled %}
+
+{{ calcraft_hostname }} {
+	import tls
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:{{ teamcraft_ports.calcraft }}
+}
+{% endif %}

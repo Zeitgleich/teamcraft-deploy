@@ -1,0 +1,27 @@
+- name: Install
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [setup-all, install-all, setup-keycloak, install-keycloak]
+  when: keycloak_enabled
+  tags: [setup-all, install-all, setup-keycloak, install-keycloak]
+
+- name: Uninstall
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_remove
+    apply:
+      tags: [setup-all, setup-keycloak]
+  vars:
+    base_service_name: keycloak
+    base_service_user: tc-keycloak
+  when: not keycloak_enabled
+  tags: [setup-all, setup-keycloak]
+
+# just ensure-admin <username> <password> [role] (never runs on its own).
+- name: User with a TeamCraft role
+  ansible.builtin.include_tasks:
+    file: ensure_admin.yml
+    apply:
+      tags: [ensure-admin]
+  tags: [never, ensure-admin]

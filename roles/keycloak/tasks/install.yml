@@ -1,0 +1,64 @@
+- name: Service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: keycloak
+      user: tc-keycloak
+      secrets:
+        keycloak_db_password: "{{ base_secrets.keycloak_db_password }}"
+        keycloak_admin_password: "{{ base_secrets.keycloak_admin_password }}"
+        keycloak_server_client_secret: "{{ base_secrets.keycloak_server_client_secret }}"
+
+- name: Realm import directory
+  ansible.builtin.file:
+    path: /home/tc-keycloak/config/import
+    state: directory
+    owner: tc-keycloak
+    group: tc-keycloak
+    mode: "0755"
+
+# Imported on the first start only (Keycloak skips existing realms); later changes are made in the
+# admin console. The client secret is a placeholder filled from the environment.
+- name: Realm
+  ansible.builtin.template:
+    src: realm.json.j2
+    dest: "/home/tc-keycloak/config/import/{{ keycloak_realm }}-realm.json"
+    owner: tc-keycloak
+    group: tc-keycloak
+    mode: "0644"
+
+- name: Quadlet unit
+  ansible.builtin.template:
+    src: keycloak.container.j2
+    dest: /home/tc-keycloak/.config/containers/systemd/keycloak.container
+    owner: tc-keycloak
+    group: tc-keycloak
+    mode: "0644"
+  register: keycloak_unit
+
+- name: Restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: keycloak
+    base_service_changed: "{{ keycloak_unit.changed or base_service_secrets_changed }}"
+
+# Started now: the TeamCraft server checks tokens against it as soon as it runs.
+- name: Start
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_start
+  vars:
+    base_service_name: keycloak
+    base_service_user: tc-keycloak
+
+- name: Wait for the realm
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ teamcraft_ports.keycloak }}/realms/{{ keycloak_realm }}/.well-known/openid-configuration"
+  register: keycloak_ready
+  until: keycloak_ready.status == 200
+  retries: 60
+  delay: 5

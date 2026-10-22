@@ -1,0 +1,76 @@
+# Wiring between the components. Lower precedence than inventory/host_vars, so anything here can be
+# overridden per host. Defaults of each component are in roles/<component>/defaults/main.yml.
+
+# TeamCraft version: images are pulled with this tag (just update moves it to the playbook's
+# release; docs/updating.md).
+teamcraft_version: "1.0.0-beta.1"
+teamcraft_image_registry: ghcr.io/zeitgleich
+
+# Host names
+teamcraft_sfu_hostname: "sfu.{{ teamcraft_domain }}"
+keycloak_hostname: "id.{{ teamcraft_domain }}"
+garage_hostname: "s3.{{ teamcraft_domain }}"
+calcraft_hostname: "cal.{{ teamcraft_domain }}"
+
+# Identity provider: bundled Keycloak unless disabled.
+keycloak_enabled: true
+teamcraft_oidc_issuer: "{{ ('https://' ~ keycloak_hostname ~ '/realms/' ~ keycloak_realm) if keycloak_enabled else '' }}"
+teamcraft_oidc_client_id: teamcraft
+# Confidential client of the TeamCraft server (deprovisioning sync).
+teamcraft_oidc_server_client: teamcraft-server
+
+# Storage: bundled Garage unless disabled.
+garage_enabled: true
+teamcraft_s3_endpoint: "{{ ('https://' ~ garage_hostname) if garage_enabled else '' }}"
+teamcraft_s3_region: "{{ garage_region if garage_enabled else 'us-east-1' }}"
+teamcraft_s3_bucket: teamcraft
+teamcraft_s3_path_style: "{{ garage_enabled }}"
+teamcraft_s3_access_key: "{{ base_secrets.garage_access_key if garage_enabled else (base_secrets.s3_access_key | default('')) }}"
+teamcraft_s3_secret_key: "{{ base_secrets.garage_secret_key if garage_enabled else (base_secrets.s3_secret_key | default('')) }}"
+
+# Outgoing mail (meeting invitations, space invitations): off until an SMTP relay is configured
+# (docs/components/mail.md).
+teamcraft_smtp_enabled: false
+# The password: secret smtp_password (sops file) or teamcraft_smtp_password.
+teamcraft_smtp_host: ""
+teamcraft_smtp_port: 587
+# start_tls, tls (port 465) or none (local relay only)
+teamcraft_smtp_security: start_tls
+teamcraft_smtp_username: ""
+teamcraft_smtp_password: "{{ base_secrets.smtp_password | default('') }}"
+teamcraft_mail_from: "{{ teamcraft_admin_email }}"
+
+# Calendar for meetings (CalDAV): the bundled CalCraft, or an external server.
+teamcraft_caldav_calendar_url: >-
+  {{ ('http://127.0.0.1:' ~ teamcraft_ports.calcraft ~ '/dav/calendars/teamcraft/default/') if calcraft_enabled else '' }}
+teamcraft_caldav_username: teamcraft
+teamcraft_caldav_password: "{{ base_secrets.calcraft_password if calcraft_enabled else (base_secrets.caldav_password | default('')) }}"
+
+
+# Ports on the host. Only Caddy (80, 443) and the SFU are public; everything else is loopback.
+teamcraft_ports:
+  postgres: 5432
+  server: 8080
+  sfu: 4433
+  sfu_control: 8081
+  keycloak: 8180
+  keycloak_management: 9180
+  garage_s3: 3900
+  garage_rpc: 3901
+  garage_admin: 3903
+  calcraft: 5232
+
+# Services in start order (stop runs it backwards): unit, user, whether it is enabled.
+teamcraft_services:
+  - {name: postgres, user: tc-db, enabled: "{{ postgres_enabled }}"}
+  - {name: garage, user: tc-garage, enabled: "{{ garage_enabled }}"}
+  - {name: keycloak, user: tc-keycloak, enabled: "{{ keycloak_enabled }}"}
+  - {name: caddy, user: tc-proxy, enabled: "{{ caddy_enabled }}"}
+  - {name: teamcraft-server, user: tc-server, enabled: "{{ teamcraft_server_enabled }}"}
+  - {name: teamcraft-sfu, user: tc-sfu, enabled: "{{ teamcraft_sfu_enabled }}"}
+  - {name: calcraft, user: tc-calcraft, enabled: "{{ calcraft_enabled }}"}
+
+# Shared directories
+teamcraft_base_dir: /srv/teamcraft
+teamcraft_cert_dir: "{{ teamcraft_base_dir }}/certs"
+teamcraft_backup_dir: "{{ teamcraft_base_dir }}/backups"

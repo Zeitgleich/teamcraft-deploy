@@ -1,0 +1,92 @@
+- name: Service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: garage
+      user: tc-garage
+      secrets:
+        garage_rpc_secret: "{{ base_secrets.garage_rpc_secret }}"
+        garage_admin_token: "{{ base_secrets.garage_admin_token }}"
+
+- name: Data directory
+  ansible.builtin.file:
+    path: "{{ garage_data_path }}"
+    state: directory
+    owner: tc-garage
+    group: tc-garage
+    mode: "0750"
+  when: garage_data_path | length > 0
+
+- name: Configuration
+  ansible.builtin.template:
+    src: garage.toml.j2
+    dest: /home/tc-garage/config/garage.toml
+    owner: tc-garage
+    group: tc-garage
+    mode: "0644"
+  register: garage_config
+
+- name: Quadlet unit
+  ansible.builtin.template:
+    src: garage.container.j2
+    dest: /home/tc-garage/.config/containers/systemd/garage.container
+    owner: tc-garage
+    group: tc-garage
+    mode: "0644"
+  register: garage_unit
+
+- name: Restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: garage
+    base_service_changed: "{{ garage_unit.changed or garage_config.changed or base_service_secrets_changed }}"
+
+# The bucket and the key are created now, so it has to run.
+- name: Start
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_start
+  vars:
+    base_service_name: garage
+    base_service_user: tc-garage
+
+- name: Cluster layout, bucket and access key
+  ansible.builtin.shell: |
+    set -euo pipefail
+    garage() { podman exec teamcraft-garage /garage "$@"; }
+    for _ in $(seq 1 30); do garage status >/dev/null 2>&1 && break; sleep 2; done
+    changed=no
+    if garage layout show 2>&1 | grep -q "No nodes"; then
+      node="$(garage node id -q | cut -d@ -f1)"
+      garage layout assign -z dc1 -c "{{ garage_capacity }}" "$node" >/dev/null
+      garage layout apply --version 1 >/dev/null
+      changed=yes
+    fi
+    if ! garage key info teamcraft >/dev/null 2>&1; then
+      garage key import --yes -n teamcraft "$KEY_ID" "$KEY_SECRET" >/dev/null
+      changed=yes
+    fi
+    for bucket in "{{ garage_bucket }}" {{ garage_extra_buckets | map('quote') | join(' ') }}; do
+      if ! garage bucket info "$bucket" >/dev/null 2>&1; then
+        garage bucket create "$bucket" >/dev/null
+        changed=yes
+      fi
+      garage bucket allow --read --write --owner "$bucket" --key teamcraft >/dev/null
+    done
+    echo "changed=$changed"
+  args:
+    executable: /bin/bash
+  environment: "{{ base_service_env | combine({'KEY_ID': base_secrets.garage_access_key, 'KEY_SECRET': base_secrets.garage_secret_key}) }}"
+  become: true
+  become_user: tc-garage
+  register: garage_init
+  # A fresh layout takes a moment before buckets can be created; every step is idempotent.
+  until: garage_init.rc == 0
+  retries: 10
+  delay: 3
+  changed_when: "'changed=yes' in garage_init.stdout"
+  no_log: "{{ not (teamcraft_debug | default(false)) }}"

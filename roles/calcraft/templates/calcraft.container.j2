@@ -1,0 +1,24 @@
+# Managed by Ansible (teamcraft-deploy, role calcraft). Runs rootless as tc-calcraft.
+[Unit]
+Description=TeamCraft meeting calendar (CalCraft, CalDAV)
+
+[Container]
+Image={{ calcraft_image }}
+Pull=missing
+ContainerName=teamcraft-calcraft
+Network=host
+Environment=CALCRAFT_SERVER__BIND=127.0.0.1:{{ teamcraft_ports.calcraft }}
+Environment=CALCRAFT_STORAGE__DATABASE=/data/calcraft.db
+Environment=CALCRAFT_SECURITY__SECURE_COOKIES=true
+Volume=calcraft-data:/data
+NoNewPrivileges=true
+DropCapability=ALL
+PodmanArgs=--memory={{ calcraft_memory }}
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=default.target

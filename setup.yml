@@ -1,0 +1,19 @@
+# The playbook (docs/installing.md). Run through the justfile or with tags, e.g.
+#   ansible-playbook -i inventory/hosts setup.yml --tags=install-all,start
+- name: Set up TeamCraft
+  hosts: teamcraft_servers
+  become: true
+  roles:
+    - role: base
+      tags: [always]
+    - role: postgres
+    - role: garage
+    - role: keycloak
+    - role: caddy
+    - role: teamcraft_server
+    - role: teamcraft_sfu
+    - role: calcraft
+    - role: backups
+    # Their tasks carry their own tags (start, stop, self-check).
+    - role: services
+    - role: self_check

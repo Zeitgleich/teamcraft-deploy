@@ -1,0 +1,15 @@
+- name: Install
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [setup-all, install-all, setup-backups, install-backups]
+  when: backups_enabled and postgres_enabled
+  tags: [setup-all, install-all, setup-backups, install-backups]
+
+# just backup: run both backups now (never runs on its own).
+- name: Backup now
+  ansible.builtin.include_tasks:
+    file: run.yml
+    apply:
+      tags: [backup]
+  tags: [never, backup]

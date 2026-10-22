@@ -1,0 +1,52 @@
+# Creates or updates a user of the bundled Keycloak with a TeamCraft role and a password:
+#   just ensure-admin alice 'a long password'            (role owner)
+#   just ensure-admin bob 'another password' member
+# With an external identity provider, create the user there (docs/components/keycloak.md).
+- name: Parameters
+  ansible.builtin.assert:
+    that:
+      - keycloak_enabled
+      - username is defined and username | length > 0
+      - password is defined and password | length >= 8
+      - (role | default('owner')) in ['owner', 'admin', 'member', 'guest']
+    fail_msg: >-
+      Needs the bundled Keycloak and -e username=... -e password=... (at least 8 characters)
+      [-e role=owner|admin|member|guest] [-e email=...].
+    quiet: true
+
+- name: Existing user
+  ansible.builtin.getent:
+    database: passwd
+    key: tc-keycloak
+
+- name: User, password and role
+  ansible.builtin.shell: |
+    set -euo pipefail
+    kc() { podman exec -i teamcraft-keycloak /opt/keycloak/bin/kcadm.sh "$@"; }
+    kc config credentials --config /tmp/kcadm.config --server "http://127.0.0.1:{{ teamcraft_ports.keycloak }}" \
+      --realm master --user admin --password "$ADMIN_PASSWORD" >/dev/null
+    k() { kc "$@" --config /tmp/kcadm.config; }
+    realm="{{ keycloak_realm }}"
+    id="$(k get users -r "$realm" -q "username=$USERNAME" -q exact=true --fields id --format csv --noquotes)"
+    if [ -z "$id" ]; then
+      k create users -r "$realm" -s "username=$USERNAME" -s enabled=true -s "email=$EMAIL" \
+        -s emailVerified=true -s "firstName=$USERNAME" -s "lastName=$USERNAME" >/dev/null
+      echo created
+    fi
+    k set-password -r "$realm" --username "$USERNAME" --new-password "$PASSWORD"
+    k add-roles -r "$realm" --uusername "$USERNAME" --cclientid "{{ teamcraft_oidc_client_id }}" --rolename "$ROLE"
+  args:
+    executable: /bin/bash
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd['tc-keycloak'][1] }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd['tc-keycloak'][1] }}/bus"
+    ADMIN_PASSWORD: "{{ base_secrets.keycloak_admin_password }}"
+    USERNAME: "{{ username }}"
+    PASSWORD: "{{ password }}"
+    EMAIL: "{{ email | default(username ~ '@' ~ teamcraft_domain) }}"
+    ROLE: "{{ role | default('owner') }}"
+  become: true
+  become_user: tc-keycloak
+  register: keycloak_ensure_admin
+  changed_when: "'created' in keycloak_ensure_admin.stdout"
+  no_log: true

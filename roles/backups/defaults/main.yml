@@ -1,0 +1,21 @@
+# Backups (docs/backups.md): a daily dump of every database on the host, and optionally a copy of
+# the dumps and of the attachment bucket to an S3 bucket elsewhere.
+backups_enabled: true
+# systemd OnCalendar expression
+backups_schedule: "*-*-* 03:15:00"
+# Dumps older than this are deleted on the host.
+backups_keep_days: 14
+
+# Off-site copy with rclone: dumps to <bucket>/postgres, attachments to <bucket>/attachments. Use a
+# provider other than the one holding the attachments. Keys: secrets backups_remote_access_key and
+# backups_remote_secret_key (sops file) or the variables below.
+backups_remote_enabled: false
+# After the dump of the same night.
+backups_remote_schedule: "*-*-* 04:15:00"
+backups_remote_endpoint: ""
+backups_remote_region: us-east-1
+backups_remote_bucket: ""
+backups_remote_path_style: true
+backups_remote_access_key: "{{ base_secrets.backups_remote_access_key | default('') }}"
+backups_remote_secret_key: "{{ base_secrets.backups_remote_secret_key | default('') }}"
+backups_rclone_image: "docker.io/rclone/rclone:1.71.2"

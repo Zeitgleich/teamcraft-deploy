@@ -1,0 +1,20 @@
+- name: Required settings are set
+  ansible.builtin.assert:
+    that:
+      - teamcraft_domain is defined and teamcraft_domain | length > 0 and teamcraft_domain != 'chat.example.com'
+      - teamcraft_admin_email is defined and '@' in teamcraft_admin_email
+      - keycloak_enabled or teamcraft_oidc_issuer | length > 0
+      - garage_enabled or teamcraft_s3_endpoint | length > 0
+    fail_msg: >-
+      Set teamcraft_domain and teamcraft_admin_email in inventory/host_vars/<host>/vars.yml, and
+      teamcraft_oidc_issuer / teamcraft_s3_endpoint when the bundled Keycloak / Garage are disabled
+      (examples/vars.yml, docs/configuring.md).
+    quiet: true
+
+- name: Debian 13 or newer
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['distribution'] == 'Debian'
+      - ansible_facts['distribution_major_version'] | int >= 13
+    fail_msg: "The playbook supports Debian 13 (trixie) and newer, not {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}."
+    quiet: true

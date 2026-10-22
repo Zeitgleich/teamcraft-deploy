@@ -1,5 +1,10 @@
-# Decrypted secrets never go into git
-secrets/*.dec.*
-secrets/*.plain.*
+# Your instance: hosts, variables and anything secret stay out of git (docs/configuring.md).
+/inventory/*
+!/inventory/.gitkeep
+# Decrypted secrets, in case someone keeps them next to the playbook
+*.dec.*
+*.plain.*
 *.retry
 .vault_pass
+# ansible-lint cache
+.ansible/

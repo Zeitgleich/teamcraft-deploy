@@ -1,0 +1,6 @@
+- name: Checks
+  ansible.builtin.include_tasks:
+    file: check.yml
+    apply:
+      tags: [self-check]
+  tags: [never, self-check]

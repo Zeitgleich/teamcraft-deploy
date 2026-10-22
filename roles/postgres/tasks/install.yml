@@ -1,0 +1,67 @@
+- name: Service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: postgres
+      user: tc-db
+      secrets:
+        postgres_password: "{{ base_secrets.postgres_password }}"
+
+- name: Quadlet unit
+  ansible.builtin.template:
+    src: postgres.container.j2
+    dest: /home/tc-db/.config/containers/systemd/postgres.container
+    owner: tc-db
+    group: tc-db
+    mode: "0644"
+  register: postgres_unit
+
+- name: Restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: postgres
+    base_service_changed: "{{ postgres_unit.changed or base_service_secrets_changed }}"
+
+# The databases are created now, so it has to run.
+- name: Start
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_start
+  vars:
+    base_service_name: postgres
+    base_service_user: tc-db
+
+- name: Wait until it accepts connections
+  ansible.builtin.command: podman exec teamcraft-postgres pg_isready -U postgres -h 127.0.0.1 -p {{ teamcraft_ports.postgres }}
+  become: true
+  become_user: tc-db
+  environment: "{{ base_service_env }}"
+  register: postgres_ready
+  until: postgres_ready.rc == 0
+  retries: 30
+  delay: 2
+  changed_when: false
+
+# Idempotent; passwords are set on every run so a rotated secret takes effect.
+- name: Roles and databases
+  ansible.builtin.shell: |
+    set -o pipefail
+    podman exec -i teamcraft-postgres psql -U postgres -v ON_ERROR_STOP=1 -q -v name="$NAME" -v owner="$OWNER" -v password="$PASSWORD" <<'SQL'
+    SELECT format('CREATE ROLE %I LOGIN', :'owner') WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'owner') \gexec
+    ALTER ROLE :"owner" WITH LOGIN PASSWORD :'password';
+    SELECT format('CREATE DATABASE %I OWNER %I', :'name', :'owner') WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'name') \gexec
+    SQL
+  args:
+    executable: /bin/bash
+  environment: "{{ base_service_env | combine({'NAME': item.name, 'OWNER': item.owner, 'PASSWORD': base_secrets[item.password_secret]}) }}"
+  loop: "{{ postgres_databases | selectattr('enabled') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  become: true
+  become_user: tc-db
+  no_log: true
+  changed_when: false

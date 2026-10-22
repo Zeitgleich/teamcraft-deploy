@@ -1,0 +1,20 @@
+# test/dry-run.sh: everything bundled and local. sslip.io names resolve to the target's address, so
+# clients on the control machine use the real host names without editing /etc/hosts.
+teamcraft_domain: chat.172-31-250-10.sslip.io
+teamcraft_admin_email: admin@example.com
+
+# Caddy's own CA instead of Let's Encrypt; the script hands its root to the clients.
+caddy_tls: internal
+self_check_validate_certs: false
+
+# Images built from the TeamCraft repository and pushed to a registry on the test network; the
+# script passes them (-e teamcraft_server_image=... -e teamcraft_sfu_image=...).
+
+# Off-site backup copy into a second bucket of the same Garage (stands in for another provider).
+garage_extra_buckets: [teamcraft-backups]
+backups_remote_enabled: true
+backups_remote_endpoint: "http://127.0.0.1:{{ teamcraft_ports.garage_s3 }}"
+backups_remote_region: garage
+backups_remote_bucket: teamcraft-backups
+backups_remote_access_key: "{{ base_secrets.garage_access_key }}"
+backups_remote_secret_key: "{{ base_secrets.garage_secret_key }}"

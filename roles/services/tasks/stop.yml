@@ -1,0 +1,17 @@
+- name: Users
+  ansible.builtin.getent:
+    database: passwd
+
+- name: Stopped, in reverse order
+  ansible.builtin.systemd_service:
+    name: "{{ item.name }}.service"
+    state: stopped
+    scope: user
+  become: true
+  become_user: "{{ item.user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[item.user][1] }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd[item.user][1] }}/bus"
+  loop: "{{ teamcraft_services | selectattr('enabled') | reverse | list }}"
+  loop_control:
+    label: "{{ item.name }}"

@@ -1,0 +1,18 @@
+- name: Required settings
+  ansible.builtin.include_tasks: validate.yml
+  tags: [always]
+
+- name: Packages, directories, firewall
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [setup-all, install-all, setup-base, install-base]
+  tags: [setup-all, install-all, setup-base, install-base]
+
+# Every run needs the secrets (any component may render them), so they load for every tag.
+- name: Secrets
+  ansible.builtin.include_tasks:
+    file: secrets.yml
+    apply:
+      tags: [always]
+  tags: [always]

@@ -1,0 +1,59 @@
+- name: Service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: teamcraft-sfu
+      user: tc-sfu
+      groups: [tc-certs]
+      secrets:
+        sfu_registration_token: "{{ base_secrets.sfu_registration_token }}"
+
+- name: Join token public key
+  ansible.builtin.copy:
+    content: "{{ base_secrets.call_signing_public_key }}"
+    dest: /home/tc-sfu/config/call-signing.pub.pem
+    owner: tc-sfu
+    group: tc-sfu
+    # Public key; read by the container's subordinate uid through the bind mount.
+    mode: "0644"
+  register: teamcraft_sfu_config
+
+- name: Quadlet unit
+  ansible.builtin.template:
+    src: teamcraft-sfu.container.j2
+    dest: /home/tc-sfu/.config/containers/systemd/teamcraft-sfu.container
+    owner: tc-sfu
+    group: tc-sfu
+    mode: "0644"
+  register: teamcraft_sfu_unit
+
+- name: Restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: teamcraft-sfu
+    base_service_changed: "{{ teamcraft_sfu_unit.changed or teamcraft_sfu_config.changed or base_service_secrets_changed }}"
+
+# The SFU reads its certificate at start only; a renewed one (copied by tc-proxy's timer) restarts it.
+- name: Certificate watch
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/home/tc-sfu/.config/systemd/user/{{ item }}"
+    owner: tc-sfu
+    group: tc-sfu
+    mode: "0644"
+  loop: [sfu-cert-watch.path, sfu-cert-watch.service]
+
+- name: Certificate watch enabled
+  ansible.builtin.systemd_service:
+    name: sfu-cert-watch.path
+    state: started
+    enabled: true
+    daemon_reload: true
+    scope: user
+  become: true
+  become_user: tc-sfu
+  environment: "{{ base_service_env }}"

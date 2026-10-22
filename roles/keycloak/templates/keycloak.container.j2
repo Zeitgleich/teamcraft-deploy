@@ -1,0 +1,39 @@
+# Managed by Ansible (teamcraft-deploy, role keycloak). Runs rootless as tc-keycloak.
+[Unit]
+Description=TeamCraft identity provider (Keycloak)
+
+[Container]
+Image={{ keycloak_image }}
+ContainerName=teamcraft-keycloak
+# Host network inside tc-keycloak's user namespace; HTTP on loopback only (Caddy terminates TLS).
+Network=host
+Exec=start --import-realm
+Volume=/home/tc-keycloak/config/import:/opt/keycloak/data/import:ro,Z
+Environment=KC_DB=postgres
+Environment=KC_DB_URL=jdbc:postgresql://127.0.0.1:{{ teamcraft_ports.postgres }}/keycloak
+Environment=KC_DB_USERNAME=keycloak
+Secret=keycloak_db_password,type=env,target=KC_DB_PASSWORD
+Environment=KC_HOSTNAME=https://{{ keycloak_hostname }}
+Environment=KC_HTTP_ENABLED=true
+Environment=KC_HTTP_HOST=127.0.0.1
+Environment=KC_HTTP_PORT={{ teamcraft_ports.keycloak }}
+Environment=KC_HTTP_MANAGEMENT_PORT={{ teamcraft_ports.keycloak_management }}
+Environment=KC_PROXY_HEADERS=xforwarded
+Environment=KC_HEALTH_ENABLED=true
+# Only used when the master realm is created (first start); just ensure-admin uses it too.
+Environment=KC_BOOTSTRAP_ADMIN_USERNAME=admin
+Secret=keycloak_admin_password,type=env,target=KC_BOOTSTRAP_ADMIN_PASSWORD
+# Filled into the realm import (${KEYCLOAK_SERVER_CLIENT_SECRET}).
+Secret=keycloak_server_client_secret,type=env,target=KEYCLOAK_SERVER_CLIENT_SECRET
+NoNewPrivileges=true
+DropCapability=ALL
+PodmanArgs=--memory={{ keycloak_memory }}
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=10s
+TimeoutStartSec=600
+
+[Install]
+WantedBy=default.target

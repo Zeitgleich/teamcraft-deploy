@@ -1,0 +1,17 @@
+# Components
+
+| Page                                       | Role               | Default                          |
+|--------------------------------------------|--------------------|----------------------------------|
+| [caddy.md](caddy.md)                       | `caddy`            | on                               |
+| [postgres.md](postgres.md)                 | `postgres`         | on                               |
+| [teamcraft-server.md](teamcraft-server.md) | `teamcraft_server` | on                               |
+| [teamcraft-sfu.md](teamcraft-sfu.md)       | `teamcraft_sfu`    | on                               |
+| [keycloak.md](keycloak.md)                 | `keycloak`         | on, or an external OIDC provider |
+| [garage.md](garage.md)                     | `garage`           | on, or external S3               |
+| [mail.md](mail.md)                         | (server settings)  | off                              |
+| [calcraft.md](calcraft.md)                 | `calcraft`         | off                              |
+| [../backups.md](../backups.md)             | `backups`          | on                               |
+
+Every role's settings, with their defaults and comments, are in `roles/<role>/defaults/main.yml`;
+the wiring between components is in `group_vars/teamcraft_servers.yml`. Override any of them in your
+`vars.yml`. Shared to all: `base` (packages, firewall, secrets, the per-service user setup).

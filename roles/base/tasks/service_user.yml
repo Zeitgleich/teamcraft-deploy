@@ -1,0 +1,78 @@
+# Helper (include_role base, tasks_from service_user): the unprivileged user a service runs as,
+# with lingering systemd --user, Quadlet directories and its podman secrets.
+# In:  base_service: {name, user, groups: [..], secrets: {podman secret name: value}}
+# Out: base_service_uid, base_service_env, base_service_secrets_changed
+- name: "Service user: {{ base_service.name }}"
+  ansible.builtin.user:
+    name: "{{ base_service.user }}"
+    shell: /usr/sbin/nologin
+    create_home: true
+    groups: "{{ base_service.groups | default([]) }}"
+    append: true
+  register: base_service_user
+
+- name: "User environment: {{ base_service.name }}"
+  ansible.builtin.set_fact:
+    base_service_uid: "{{ base_service_user.uid }}"
+    base_service_env:
+      XDG_RUNTIME_DIR: "/run/user/{{ base_service_user.uid }}"
+      DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ base_service_user.uid }}/bus"
+
+- name: "Keep the user's systemd running without login: {{ base_service.name }}"
+  ansible.builtin.command: "loginctl enable-linger {{ base_service.user }}"
+  args:
+    creates: "/var/lib/systemd/linger/{{ base_service.user }}"
+
+- name: "Wait for the user's systemd: {{ base_service.name }}"
+  ansible.builtin.wait_for:
+    path: "/run/user/{{ base_service_user.uid }}/bus"
+    timeout: 60
+
+- name: "Directories: {{ base_service.name }}"
+  ansible.builtin.file:
+    path: "/home/{{ base_service.user }}/{{ item }}"
+    state: directory
+    owner: "{{ base_service.user }}"
+    group: "{{ base_service.user }}"
+    mode: "0750"
+  loop:
+    - .config
+    - .config/containers
+    - .config/containers/systemd
+    - .config/systemd
+    - .config/systemd/user
+    - .config/teamcraft-secrets
+    - config
+
+- name: "Podman secrets: {{ base_service.name }}"
+  ansible.builtin.shell: |
+    set -o pipefail
+    printf '%s' "$VALUE" | podman secret create --replace {{ item.key }} -
+  args:
+    executable: /bin/bash
+  environment: "{{ base_service_env | combine({'VALUE': item.value}) }}"
+  loop: "{{ base_service.secrets | default({}) | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  become: true
+  become_user: "{{ base_service.user }}"
+  no_log: true
+  changed_when: false
+
+# podman can't tell whether a secret changed; a hash per secret can (and triggers the restart).
+- name: "Secret fingerprints: {{ base_service.name }}"
+  ansible.builtin.copy:
+    content: "{{ item.value | hash('sha256') }}\n"
+    dest: "/home/{{ base_service.user }}/.config/teamcraft-secrets/{{ item.key }}.sha256"
+    owner: "{{ base_service.user }}"
+    group: "{{ base_service.user }}"
+    mode: "0600"
+  loop: "{{ base_service.secrets | default({}) | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  no_log: true
+  register: base_service_secret_files
+
+- name: "Secrets changed: {{ base_service.name }}"
+  ansible.builtin.set_fact:
+    base_service_secrets_changed: "{{ base_service_secret_files.changed }}"

@@ -1,0 +1,54 @@
+- name: Image is set
+  ansible.builtin.assert:
+    that: calcraft_image | length > 0
+    fail_msg: "calcraft_enabled needs calcraft_image (docs/components/calcraft.md)."
+    quiet: true
+
+- name: Service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: calcraft
+      user: tc-calcraft
+
+- name: Quadlet unit
+  ansible.builtin.template:
+    src: calcraft.container.j2
+    dest: /home/tc-calcraft/.config/containers/systemd/calcraft.container
+    owner: tc-calcraft
+    group: tc-calcraft
+    mode: "0644"
+  register: calcraft_unit
+
+- name: Restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: calcraft
+    base_service_changed: "{{ calcraft_unit.changed }}"
+
+# The account the TeamCraft server writes meeting events with.
+- name: Start
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_start
+  vars:
+    base_service_name: calcraft
+    base_service_user: tc-calcraft
+
+- name: Account of the TeamCraft server
+  ansible.builtin.shell: |
+    set -o pipefail
+    if printf '%s\n' "$PASSWORD" | podman exec -i teamcraft-calcraft /usr/local/bin/calcraft user add teamcraft \
+        --display-name TeamCraft --password-stdin >/dev/null 2>&1; then echo created; fi
+  args:
+    executable: /bin/bash
+  environment: "{{ base_service_env | combine({'PASSWORD': base_secrets.calcraft_password}) }}"
+  become: true
+  become_user: tc-calcraft
+  register: calcraft_account
+  changed_when: "'created' in calcraft_account.stdout"
+  no_log: true

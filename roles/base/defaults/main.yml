@@ -1,0 +1,45 @@
+# Shared base of every TeamCraft host: packages for rootless podman + Quadlet, the shared groups and
+# directories, the firewall and the secrets.
+
+# Packages: podman >= 4.4 for Quadlet (Debian 13 ships 5.x).
+base_packages:
+  - podman
+  - catatonit
+  - uidmap
+  - passt
+  - dbus-user-session
+  - systemd-container
+  - openssl
+  - curl
+
+# Firewall (nftables, IPv4 and IPv6): replaces the host's ruleset with one that allows SSH, 80/443
+# (tcp, and udp for HTTP/3) and the SFU's UDP port, plus base_firewall_extra_ports. Disable it to
+# manage the firewall yourself (docs/prerequisites.md).
+base_firewall_enabled: true
+base_firewall_ssh_port: "{{ ansible_port | default(22) }}"
+# e.g. [{port: 9100, proto: tcp}]
+base_firewall_extra_ports: []
+
+# Secrets: generated on the host on the first run and kept there (root only). A sops file on the
+# control machine can provide any of them instead (its values win), e.g. to keep them in your own
+# private inventory repository. Names: docs/configuring.md.
+base_secrets_dir: "{{ teamcraft_base_dir }}/secrets"
+base_secrets_sops_file: ""
+
+# kind: hex (32 random bytes as hex), token (48 random bytes, base64), base64url32 (32 bytes,
+# base64url without padding), ed25519 (PEM private key), garage_key_id (GK + 24 hex characters).
+base_generated_secrets:
+  - {name: postgres_password, kind: hex}
+  - {name: teamcraft_db_password, kind: hex}
+  - {name: keycloak_db_password, kind: hex}
+  - {name: keycloak_admin_password, kind: hex}
+  - {name: keycloak_server_client_secret, kind: hex}
+  - {name: garage_rpc_secret, kind: hex}
+  - {name: garage_admin_token, kind: token}
+  - {name: garage_access_key, kind: garage_key_id}
+  - {name: garage_secret_key, kind: hex}
+  - {name: sfu_registration_token, kind: hex}
+  - {name: meetings_guest_token_secret, kind: token}
+  - {name: call_signing_key, kind: ed25519}
+  - {name: vapid_private_key, kind: base64url32}
+  - {name: calcraft_password, kind: hex}

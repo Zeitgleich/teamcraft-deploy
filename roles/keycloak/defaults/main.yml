@@ -1,0 +1,17 @@
+# Bundled identity provider: Keycloak, rootless as tc-keycloak, database in the bundled Postgres,
+# behind Caddy at keycloak_hostname. Disable it to use an existing OIDC provider
+# (docs/components/keycloak.md). keycloak_enabled and keycloak_hostname: group_vars/teamcraft_servers.yml.
+keycloak_image: "quay.io/keycloak/keycloak:26.7.5"
+keycloak_memory: 1g
+keycloak_realm: teamcraft
+keycloak_realm_display_name: TeamCraft
+# Redirect URIs of the apps besides the web client and the desktop app's loopback callback, e.g. the
+# mobile apps' custom scheme ("<scheme>:/oauth/callback", apps/android/README.md).
+keycloak_extra_redirect_uris: []
+# The admin console and the admin API are not published through Caddy by default; reach them through
+# an SSH tunnel to 127.0.0.1:{{ teamcraft_ports.keycloak }} (docs/components/keycloak.md).
+keycloak_admin_console_public: false
+# Access token lifetime in seconds.
+keycloak_access_token_lifespan: 300
+# Web client, the desktop app's loopback login (any port, RFC 8252) and the extra ones above.
+keycloak_redirect_uris: "{{ ['https://' ~ teamcraft_domain ~ '/*', 'http://127.0.0.1/callback', 'http://[::1]/callback'] + keycloak_extra_redirect_uris }}"

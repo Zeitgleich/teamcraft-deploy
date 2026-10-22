@@ -1,0 +1,49 @@
+# The TeamCraft server (REST API, gateway, web client), rootless as tc-server, behind Caddy.
+teamcraft_server_enabled: true
+teamcraft_server_image: "{{ teamcraft_image_registry }}/teamcraft-server:{{ teamcraft_version }}"
+teamcraft_server_memory: 1g
+teamcraft_server_log_filter: info
+
+# The web client: the release's teamcraft-web-<version>.tar.gz. Off until you point it at a
+# release that has it (docs/components/teamcraft-server.md); the apps work without it.
+teamcraft_server_web_enabled: false
+teamcraft_server_web_url: "https://github.com/Zeitgleich/TeamCraft/releases/download/v{{ teamcraft_version }}/teamcraft-web-{{ teamcraft_version }}.tar.gz"
+# sha256:<hex> from the release's SHA256SUMS; empty skips the check.
+teamcraft_server_web_checksum: ""
+
+# Deprovisioning: poll the identity provider for disabled or deleted users (needs the server
+# client's service account; the bundled Keycloak has it).
+teamcraft_server_oidc_sync_enabled: "{{ keycloak_enabled }}"
+# Bundled Keycloak: keys and admin API over loopback instead of a round trip through Caddy.
+teamcraft_server_oidc_jwks_uri: >-
+  {{ ('http://127.0.0.1:' ~ teamcraft_ports.keycloak ~ '/realms/' ~ keycloak_realm ~ '/protocol/openid-connect/certs')
+     if keycloak_enabled else '' }}
+teamcraft_server_oidc_admin_url: >-
+  {{ ('http://127.0.0.1:' ~ teamcraft_ports.keycloak ~ '/admin/realms/' ~ keycloak_realm) if keycloak_enabled else '' }}
+teamcraft_server_oidc_sync_client_secret: >-
+  {{ base_secrets.keycloak_server_client_secret if keycloak_enabled else (base_secrets.oidc_sync_client_secret | default('')) }}
+teamcraft_server_oidc_roles:
+  owner: owner
+  admin: admin
+  member: member
+  guest: guest
+
+# Anything else from teamcraft.example.toml, merged into the generated file as TOML sections, e.g.
+#   teamcraft_server_extra_config: |
+#     [guests]
+#     default_expiry_days = 30
+teamcraft_server_extra_config: ""
+
+# Podman secrets of the server (empty ones are left out). Derived from base_secrets.
+teamcraft_server_secrets:
+  database_url: >-
+    postgres://teamcraft:{{ base_secrets.teamcraft_db_password | urlencode | replace('/', '%2F') }}@127.0.0.1:{{ teamcraft_ports.postgres }}/teamcraft
+  s3_access_key: "{{ teamcraft_s3_access_key }}"
+  s3_secret_key: "{{ teamcraft_s3_secret_key }}"
+  sfu_registration_token: "{{ base_secrets.sfu_registration_token }}"
+  meetings_guest_token_secret: "{{ base_secrets.meetings_guest_token_secret }}"
+  call_signing_key: "{{ base_secrets.call_signing_key }}"
+  vapid_private_key: "{{ base_secrets.vapid_private_key }}"
+  oidc_sync_client_secret: "{{ teamcraft_server_oidc_sync_client_secret if teamcraft_server_oidc_sync_enabled else '' }}"
+  smtp_password: "{{ teamcraft_smtp_password if teamcraft_smtp_enabled else '' }}"
+  caldav_password: "{{ teamcraft_caldav_password if teamcraft_caldav_calendar_url | length > 0 else '' }}"

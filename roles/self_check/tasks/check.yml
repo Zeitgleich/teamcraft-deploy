@@ -1,0 +1,55 @@
+- name: Users
+  ansible.builtin.getent:
+    database: passwd
+
+- name: Services are active
+  # noqa: command-instead-of-module  # the module can't fail a check on an inactive unit by itself
+  ansible.builtin.command: systemctl --user is-active {{ item.name }}.service
+  become: true
+  become_user: "{{ item.user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[item.user][1] }}"
+  loop: "{{ teamcraft_services | selectattr('enabled') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: false
+
+- name: SFU listens on IPv4 and IPv6 (dual-stack socket)
+  ansible.builtin.shell: |
+    set -o pipefail
+    ss -Hlun "sport = :{{ teamcraft_ports.sfu }}" | grep -E '\[::\]|\*:'
+  args:
+    executable: /bin/bash
+  when: teamcraft_sfu_enabled
+  changed_when: false
+
+- name: Public endpoints, from the control machine
+  ansible.builtin.uri:
+    url: "{{ item }}"
+    validate_certs: "{{ self_check_validate_certs }}"
+  delegate_to: localhost
+  become: false
+  loop: "{{ ['https://' ~ teamcraft_domain ~ '/readyz']
+            + (['https://' ~ keycloak_hostname ~ '/realms/' ~ keycloak_realm ~ '/.well-known/openid-configuration'] if keycloak_enabled else [])
+            + ([teamcraft_oidc_issuer ~ '/.well-known/openid-configuration'] if not keycloak_enabled else []) }}"
+
+- name: Internal API is not reachable from outside
+  ansible.builtin.uri:
+    url: "https://{{ teamcraft_domain }}/api/internal/v1/calls/participants/joined"
+    method: POST
+    status_code: 404
+    validate_certs: "{{ self_check_validate_certs }}"
+  delegate_to: localhost
+  become: false
+
+- name: S3 endpoint answers
+  ansible.builtin.uri:
+    url: "{{ teamcraft_s3_endpoint }}"
+    status_code: [200, 403]
+    validate_certs: "{{ self_check_validate_certs }}"
+  delegate_to: localhost
+  become: false
+
+- name: All good
+  ansible.builtin.debug:
+    msg: "TeamCraft at https://{{ teamcraft_domain }} looks healthy."

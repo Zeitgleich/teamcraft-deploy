@@ -1,0 +1,29 @@
+- name: Packages
+  ansible.builtin.apt:
+    name: "{{ base_packages + (['nftables'] if base_firewall_enabled else []) }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# Rootless containers can't bind below 1024; Caddy needs 80/443 (covers IPv6 too).
+- name: Unprivileged ports from 80
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_unprivileged_port_start
+    value: "80"
+    sysctl_file: /etc/sysctl.d/60-teamcraft.conf
+
+- name: Group that may read the SFU certificate
+  ansible.builtin.group:
+    name: tc-certs
+
+- name: Base directory
+  ansible.builtin.file:
+    path: "{{ teamcraft_base_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Firewall
+  ansible.builtin.include_tasks: firewall.yml
+  when: base_firewall_enabled

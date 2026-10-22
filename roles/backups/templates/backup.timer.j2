@@ -1,0 +1,11 @@
+# Managed by Ansible (teamcraft-deploy, role backups).
+[Unit]
+Description={{ backups_unit_description }} (schedule)
+
+[Timer]
+OnCalendar={{ backups_unit_schedule }}
+# Catches up after downtime.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
