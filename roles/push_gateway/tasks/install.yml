@@ -4,7 +4,10 @@
       - push_gateway_hostname | length > 0
       - push_gateway_admin_email is match('.+@.+')
       - push_gateway_apns_key | length > 0 or push_gateway_fcm_service_account | length > 0
-      - push_gateway_apns_key | length == 0 or (push_gateway_apns_key_id | length > 0 and push_gateway_apns_team_id | length > 0 and push_gateway_apns_bundle_id | length > 0)
+      - >-
+        push_gateway_apns_key | length == 0
+        or (push_gateway_apns_key_id | length > 0 and push_gateway_apns_team_id | length > 0
+        and push_gateway_apns_bundle_id | length > 0)
       - ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_major_version'] | int >= 13
     fail_msg: >-
       Set push_gateway_hostname, push_gateway_admin_email and the credentials of at least one provider

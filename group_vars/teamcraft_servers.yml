@@ -83,3 +83,14 @@ teamcraft_brands: []
 teamcraft_web_hostnames: "{{ ([teamcraft_domain] + (teamcraft_brands | map(attribute='hostnames') | flatten)) | unique }}"
 # Optional: access-token claim with the user's organization ([oidc] organization_claim).
 teamcraft_oidc_organization_claim: ""
+
+# Push gateway for the store apps (docs/components/push-gateway.md): the iOS and Android store apps
+# can only be pushed to with their publisher's credentials, which a push gateway holds. Set the URL of
+# the publisher's gateway (default: the one of the official apps); the server key is generated like the
+# other secrets. Set it empty for no gateway, e.g. with self-built apps that use your own credentials
+# (teamcraft_server_extra_config with [push.apns] / [push.fcm]).
+teamcraft_push_gateway_url: https://push-gw.zeitgleich.de
+# The apps seal their device token for the gateway, bound to this server (docs/components/push-gateway.md).
+# true: also accept raw tokens from old apps that don't seal yet (a transition; the gateway must allow it
+# too, and a raw token can be used by any server that learns it).
+teamcraft_push_gateway_accept_unbound_tokens: false
