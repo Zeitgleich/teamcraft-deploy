@@ -54,7 +54,7 @@ IPv4 **and** IPv6 (`listen 443` and `listen [::]:443` in nginx).
 
 | Proxy                                    | Generated file                       |
 |------------------------------------------|--------------------------------------|
-| [nginx](proxies/nginx.md)                | `nginx/teamcraft.conf`               |
+| [nginx](proxies/nginx.md)                | `nginx/teamcraft.conf` (1.25.1+, HTTP/3), `nginx/teamcraft-legacy.conf` (older) |
 | [Plesk](proxies/plesk.md) (nginx inside) | `plesk/<host name>.conf`             |
 | [Apache](proxies/apache.md)              | `apache/teamcraft.conf`              |
 | [HAProxy](proxies/haproxy.md)            | `haproxy/teamcraft.cfg`              |
@@ -153,8 +153,11 @@ Before installing anything the playbook checks (`teamcraft_preflight_enabled`):
 - With Caddy enabled, nothing else may hold tcp/80, tcp/443 or udp/443. A web server there stops the
   run with a pointer to this page – Caddy would only crash-loop next to it.
 - No other software may hold a port TeamCraft's services use (`teamcraft_ports`, loopback ports
-  included, e.g. 8080 or 5432). Move TeamCraft's with `teamcraft_ports` if one is taken.
-- On a Plesk server `base_firewall_enabled` must be `false`.
+  included, e.g. 8080 or 5432). Move TeamCraft's with `teamcraft_ports` if one is taken; only the ones
+  you name change, e.g. `teamcraft_ports: {postgres: 13100, server: 13101}`.
+- `base_firewall_enabled` is `false` on hosts with Plesk or Docker (the playbook's firewall would
+  replace their rules).
+- On Ubuntu (Podman 4.9) the host has only cgroup v2.
 
 TeamCraft's own services (already installed) don't count as conflicts.
 

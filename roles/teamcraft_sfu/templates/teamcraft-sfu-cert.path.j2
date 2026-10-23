@@ -10,6 +10,10 @@ PathChanged={{ teamcraft_sfu_certificate_path }}
 {% if teamcraft_sfu_certificate_key_path != teamcraft_sfu_certificate_path %}
 PathChanged={{ teamcraft_sfu_certificate_key_path }}
 {% endif %}
+# Renewals that swap symlinks (certbot's and Plesk's live/ directories) show up as changes of the directory.
+{% for dir in [teamcraft_sfu_certificate_path | dirname, teamcraft_sfu_certificate_key_path | dirname] | unique %}
+PathChanged={{ dir }}
+{% endfor %}
 {% endif %}
 Unit=teamcraft-sfu-cert.service
 

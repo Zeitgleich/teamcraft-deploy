@@ -8,6 +8,9 @@ ContainerName=teamcraft-postgres
 # Host network inside tc-db's user namespace; listens on loopback only.
 Network=host
 Exec=postgres -c listen_addresses=127.0.0.1 -c port={{ teamcraft_ports.postgres }}
+# psql, pg_dump and pg_restore inside the container (podman exec) use the same port: without it they
+# look for the socket of 5432 and fail when teamcraft_ports.postgres is another.
+Environment=PGPORT={{ teamcraft_ports.postgres }}
 Volume=postgres-data:/var/lib/postgresql
 Secret=postgres_password,type=env,target=POSTGRES_PASSWORD
 Environment=POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256

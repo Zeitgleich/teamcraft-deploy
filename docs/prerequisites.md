@@ -2,7 +2,10 @@
 
 ## The server
 
-- **Debian 13 (trixie)** or newer, freshly installed. Other distributions are not supported.
+- **Debian 13 (trixie)** or **Ubuntu 24.04** or newer. Other distributions are not supported. Debian
+  13 brings Podman 5; Ubuntu 24.04 brings Podman 4.9, which works as long as the host has nothing but
+  cgroup v2 (the preflight check tests it). A fresh server is easiest, but a server that already runs
+  sites, Docker containers or a database works too ([reverse-proxy.md](reverse-proxy.md)).
 - 2 vCPU, 4 GB RAM (Keycloak and the server are the hungry ones), 20 GB disk plus the attachments
   if you use the bundled Garage.
 - A public **IPv4 and IPv6** address. TeamCraft works with IPv4 only, but clients on IPv6-only

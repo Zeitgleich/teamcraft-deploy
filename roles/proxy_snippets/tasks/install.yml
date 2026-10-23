@@ -26,6 +26,16 @@
   loop_control:
     label: "{{ item.dest }}"
 
+- name: Configuration for nginx before 1.25.1
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "{{ teamcraft_proxy_snippets_dir }}/nginx/teamcraft-legacy.conf"
+    owner: root
+    group: root
+    mode: "0640"
+  vars:
+    proxy_snippets_nginx_legacy: true
+
 - name: Plesk directives, one file per domain
   ansible.builtin.template:
     src: plesk.conf.j2

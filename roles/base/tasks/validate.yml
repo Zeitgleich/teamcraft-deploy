@@ -11,13 +11,22 @@
       (examples/vars.yml, docs/configuring.md).
     quiet: true
 
-- name: Debian 13 or newer
+- name: Debian 13 or Ubuntu 24.04 or newer
   ansible.builtin.assert:
-    that:
-      - ansible_facts['distribution'] == 'Debian'
-      - ansible_facts['distribution_major_version'] | int >= 13
-    fail_msg: "The playbook supports Debian 13 (trixie) and newer, not {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}."
+    that: >-
+      (ansible_facts['distribution'] == 'Debian' and ansible_facts['distribution_major_version'] | int >= 13)
+      or (ansible_facts['distribution'] == 'Ubuntu' and ansible_facts['distribution_major_version'] | int >= 24)
+    fail_msg: >-
+      The playbook supports Debian 13 (trixie) and Ubuntu 24.04 and newer, not {{ ansible_facts['distribution'] }}
+      {{ ansible_facts['distribution_version'] }}.
     quiet: true
+
+# A partial teamcraft_ports in vars.yml (only the ports you move) gets the defaults for the rest.
+# The shared setting every role reads, completed here once (hence no base_ prefix).
+- name: Ports  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    teamcraft_ports: "{{ teamcraft_port_defaults | combine(teamcraft_ports) }}"
+
 
 - name: Brands are consistent
   ansible.builtin.assert:

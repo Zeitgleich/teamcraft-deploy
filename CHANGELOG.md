@@ -8,6 +8,15 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Ubuntu 24.04 for the whole stack (Podman 4.9 from Ubuntu's archive; `crun` is installed with it, because
+  Docker's `runc` can't start the read-only containers). Tested on an Ubuntu 24.04 VM laid out like a Plesk
+  server, with nginx, Docker and its own PostgreSQL on 5432.
+- Two nginx configurations: `nginx/teamcraft.conf` for nginx 1.25.1 and newer with HTTP/2 and HTTP/3,
+  `nginx/teamcraft-legacy.conf` for older nginx (Ubuntu 24.04's 1.24) with HTTP/2.
+- `teamcraft_ports` can name only the ports you move; the others keep their defaults
+  (`teamcraft_port_defaults`).
+- Preflight checks on servers: the playbook's firewall on a host with Docker (as with Plesk), and on Ubuntu
+  a cgroup v1 hierarchy next to v2.
 - The push gateway behind a web server the host already runs (Plesk, Apache, nginx):
   `push_gateway_caddy_enabled: false` binds nothing to 80/443 and writes the proxy configuration (Plesk's
   additional Apache or nginx directives, a plain Apache vhost or nginx server block) to
@@ -37,10 +46,20 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The SFU's certificate copy also watches the certificate's directory: renewals that swap symlinks
+  (certbot's and Plesk's `live/`) restart the SFU within seconds instead of within the hour.
+
 - `net.ipv4.ip_unprivileged_port_start` is only lowered to 80 where a bundled Caddy needs it
   (`base_unprivileged_web_ports`; without Caddy it stays at the kernel's 1024).
 - `caddy_enabled` moved to `group_vars/teamcraft_servers.yml` (set it in `vars.yml` as before).
 - `just self-check` accepts 403 as well as 404 for the refused internal API (Apache and Traefik answer 403).
+
+### Fixed
+
+- A PostgreSQL port other than 5432 (`teamcraft_ports.postgres`): creating the databases, backups and
+  restores used the default socket; the container now sets `PGPORT`.
+- The SFU's Quadlet unit used `GroupAdd=`, which Podman 4.9 (Ubuntu 24.04) doesn't know; it's a
+  `PodmanArgs` option now.
 
 ## [1.0.0] - 2026-10-23
 
