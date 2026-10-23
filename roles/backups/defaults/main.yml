@@ -18,4 +18,4 @@ backups_remote_bucket: ""
 backups_remote_path_style: true
 backups_remote_access_key: "{{ base_secrets.backups_remote_access_key | default('') }}"
 backups_remote_secret_key: "{{ base_secrets.backups_remote_secret_key | default('') }}"
-backups_rclone_image: "docker.io/rclone/rclone:1.71.2"
+backups_rclone_image: "docker.io/rclone/rclone:1.75.2"

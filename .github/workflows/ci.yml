@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 env:
-  ANSIBLE_LINT_VERSION: "25.12.2"
+  ANSIBLE_LINT_VERSION: "26.10.1"
   YAMLLINT_VERSION: "1.38.0"
 
 jobs:
@@ -31,10 +31,10 @@ jobs:
     name: yamllint + ansible-lint + shellcheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - name: Linters
         run: pip install "ansible-lint==${ANSIBLE_LINT_VERSION}" "yamllint==${YAMLLINT_VERSION}"
       - name: Collections
@@ -58,25 +58,25 @@ jobs:
     steps:
       - name: Free disk space on the runner
         run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: deploy
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Zeitgleich/TeamCraft
           ref: ${{ inputs.teamcraft_ref || 'main' }}
           path: teamcraft
           # While the TeamCraft repository is private: a read-only token for it in this secret.
           token: ${{ secrets.TEAMCRAFT_READ_TOKEN || github.token }}
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: teamcraft
       - name: System packages (e2e harness build)
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libclang-dev cmake pkg-config libssl-dev
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - name: Ansible
         working-directory: deploy
         run: pip install ansible-core && ansible-galaxy collection install -r requirements.yml

@@ -1,0 +1,12 @@
+# Actions are pinned to commit SHAs; Dependabot bumps the SHA and the version comment together.
+# The container images are Ansible variables (roles/*/defaults/main.yml), which Dependabot can't
+# read: bump them with each TeamCraft release (docs/updating.md).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

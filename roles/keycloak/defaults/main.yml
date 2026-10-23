@@ -1,7 +1,7 @@
 # Bundled identity provider: Keycloak, rootless as tc-keycloak, database in the bundled Postgres,
 # behind Caddy at keycloak_hostname. Disable it to use an existing OIDC provider
 # (docs/components/keycloak.md). keycloak_enabled and keycloak_hostname: group_vars/teamcraft_servers.yml.
-keycloak_image: "quay.io/keycloak/keycloak:26.7.5"
+keycloak_image: "quay.io/keycloak/keycloak:26.8.1"
 keycloak_memory: 1g
 keycloak_realm: teamcraft
 keycloak_realm_display_name: TeamCraft
