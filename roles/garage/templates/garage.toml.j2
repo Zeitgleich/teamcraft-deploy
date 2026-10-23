@@ -10,7 +10,7 @@ rpc_secret_file = "/run/secrets/garage_rpc_secret"
 
 [s3_api]
 s3_region = "{{ garage_region }}"
-api_bind_addr = "127.0.0.1:{{ teamcraft_ports.garage_s3 }}"
+api_bind_addr = "{{ teamcraft_upstream_host }}:{{ teamcraft_ports.garage_s3 }}"
 
 [admin]
 api_bind_addr = "127.0.0.1:{{ teamcraft_ports.garage_admin }}"

@@ -25,7 +25,7 @@
 # unset options keep its defaults. Add more with teamcraft_server_extra_config.
 
 [server]
-listen_addr = "127.0.0.1:{{ teamcraft_ports.server }}"
+listen_addr = "{{ teamcraft_upstream_host }}:{{ teamcraft_ports.server }}"
 
 [oidc]
 issuer = "{{ teamcraft_oidc_issuer }}"
@@ -54,7 +54,8 @@ admin_url = "{{ teamcraft_server_oidc_admin_url }}"
 filter = "{{ teamcraft_server_log_filter }}"
 format = "json"
 
-# Caddy terminates TLS and sets X-Forwarded-For.
+# The reverse proxy (Caddy or your own, docs/reverse-proxy.md) terminates TLS and sets X-Forwarded-For;
+# only it can reach the server, which listens on loopback.
 [security]
 hsts = true
 trust_forwarded_for = true
@@ -70,9 +71,15 @@ path_style = {{ teamcraft_s3_path_style | bool | lower }}
 static_dir = "/srv/teamcraft/web"
 
 {% endif %}
-{% if teamcraft_brands | length > 0 %}
-# Brands (docs/components/branding.md), from teamcraft_brands.
+{% if teamcraft_brands | length > 0 or teamcraft_trusted_proxies | length > 0 %}
+# Brands (docs/components/branding.md), from teamcraft_brands; behind an external proxy its
+# X-Forwarded-Host counts (teamcraft_trusted_proxies).
 [branding]
+{% if teamcraft_trusted_proxies | length > 0 %}
+trusted_proxies = {{ teamcraft_trusted_proxies | to_json }}
+{% endif %}
+{% endif %}
+{% if teamcraft_brands | length > 0 %}
 {% if teamcraft_server_brand_assets_src | length > 0 %}
 assets_dir = "/etc/teamcraft/brands"
 {% endif %}

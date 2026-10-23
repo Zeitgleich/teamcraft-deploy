@@ -1,0 +1,19 @@
+# Without Caddy: configurations for the proxy you run, filled in with this host's names, ports and the
+# loopback address of the services, written to teamcraft_proxy_snippets_dir (docs/reverse-proxy.md).
+# The settings are in group_vars/teamcraft_servers.yml (teamcraft_proxy_*); these are derived.
+
+# Every public host name with what it forwards to. kind: server (API, gateway, web client; one per brand
+# host name), keycloak (only the paths users and apps need), s3 (Garage, with CORS for the web client),
+# calcraft.
+proxy_snippets_sites: >-
+  {{ teamcraft_web_hostnames | map('regex_replace', '^', 'server ') | map('regex_replace', '$', ' ' ~ teamcraft_ports.server) | list
+     + (['keycloak ' ~ keycloak_hostname ~ ' ' ~ teamcraft_ports.keycloak] if keycloak_enabled else [])
+     + (['s3 ' ~ garage_hostname ~ ' ' ~ teamcraft_ports.garage_s3] if garage_enabled else [])
+     + (['calcraft ' ~ calcraft_hostname ~ ' ' ~ teamcraft_ports.calcraft] if calcraft_enabled else []) }}
+# Every name that needs a certificate: the sites and the SFU's (which only needs the certificate).
+proxy_snippets_hostnames: >-
+  {{ proxy_snippets_sites | map('regex_replace', '^[^ ]+ ', '') | map('regex_replace', ' [^ ]+$', '') | list
+     + ([teamcraft_sfu_hostname] if teamcraft_sfu_enabled else []) }}
+# Origins of the web client, allowed to use S3 directly (CORS).
+proxy_snippets_web_origins: "{{ teamcraft_web_hostnames | map('regex_replace', '^', 'https://') | list }}"
+proxy_snippets_web_origins_regex: "^({{ proxy_snippets_web_origins | map('regex_escape') | join('|') }})$"

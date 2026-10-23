@@ -2,7 +2,7 @@
 
 | Page                                       | Role                    | Default                           |
 |--------------------------------------------|-------------------------|-----------------------------------|
-| [caddy.md](caddy.md)                       | `caddy`                 | on                                |
+| [caddy.md](caddy.md)                       | `caddy`                 | on, or [your own proxy](../reverse-proxy.md) |
 | [postgres.md](postgres.md)                 | `postgres`              | on                                |
 | [teamcraft-server.md](teamcraft-server.md) | `teamcraft_server`      | on                                |
 | [teamcraft-sfu.md](teamcraft-sfu.md)       | `teamcraft_sfu`         | on                                |

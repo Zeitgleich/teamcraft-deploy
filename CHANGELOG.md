@@ -15,7 +15,17 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 - Push gateway hosts can run Ubuntu 24.04 (Podman 4.9 from Ubuntu's archive) as well as Debian 13.
 - Preflight checks on gateway hosts: 80/443 taken while its Caddy is enabled, its ports taken, the
   playbook's firewall on a host with Plesk or Docker (`push_gateway_preflight_enabled`).
-
+- Behind your own reverse proxy (nginx, Apache, Plesk, Traefik, HAProxy, another Caddy):
+  `caddy_enabled: false` binds nothing of TeamCraft to 80/443, trusts the local proxy's forwarded
+  headers, and writes configurations for it, filled in with your host names and ports, to
+  `/srv/teamcraft/reverse-proxy/` (role `proxy_snippets`). Guide: [docs/reverse-proxy.md](docs/reverse-proxy.md)
+  with a page per proxy, Plesk step by step.
+- The SFU can use an existing certificate (`teamcraft_sfu_certificate_path` / `_key_path`, or
+  `teamcraft_sfu_certificate_nginx_conf` for Plesk's renamed files): a root path unit and timer copy it
+  for `tc-sfu` when it changes and the SFU restarts.
+- Preflight checks before installing: ports 80/443 taken while Caddy is enabled, a service's port taken
+  by other software, the playbook's firewall on a Plesk server (`teamcraft_preflight_enabled`).
+- `teamcraft_upstream_address`: the services' loopback address, `127.0.0.1` (default) or `::1`.
 - Device tokens are bound to servers: the apps seal them for the push gateway, so the server never holds
   a usable token. `teamcraft_push_gateway_accept_unbound_tokens` / `push_gateway_accept_unbound_tokens`
   (both off) keep old apps working during a transition; the gateway's token keys are in its volume.
@@ -28,7 +38,9 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - `net.ipv4.ip_unprivileged_port_start` is only lowered to 80 where a bundled Caddy needs it
-  (`base_unprivileged_web_ports`).
+  (`base_unprivileged_web_ports`; without Caddy it stays at the kernel's 1024).
+- `caddy_enabled` moved to `group_vars/teamcraft_servers.yml` (set it in `vars.yml` as before).
+- `just self-check` accepts 403 as well as 404 for the refused internal API (Apache and Traefik answer 403).
 
 ## [1.0.0] - 2026-10-23
 

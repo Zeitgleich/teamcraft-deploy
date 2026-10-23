@@ -17,9 +17,14 @@
 # a TeamCraft checkout in $TEAMCRAFT_REPO (default ../teamcraft) with a Rust toolchain for the e2e test.
 # DRY_RUN_BRANDS=1 adds two brands (test/inventory/brands.yml) and checks that each host name gets its
 # own brand.
+# DRY_RUN_PROXY=nginx runs without Caddy, behind nginx on the target configured with the playbook's own
+# snippet, certificates from a test CA, the SFU's read like Plesk keeps it (test/inventory/external-proxy.yml);
+# it also checks the gateway WebSocket through the proxy (test/gateway-check.py, Python "websockets").
+# DRY_RUN_SKIP_E2E=1 leaves out TeamCraft's end-to-end test (it compiles TeamCraft's test harness).
 # DRY_RUN_ANSIBLE_ARGS adds options to every playbook run, e.g. "-e teamcraft_debug=true -vv" to see
 # the output of tasks that hide it because they handle secrets (test secrets only, here).
 set -euo pipefail
+proxy="${DRY_RUN_PROXY:-}"
 
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
@@ -59,7 +64,56 @@ playbook() {
     -i "$here/inventory/hosts" "$repo/setup.yml" --private-key "$state/id_ed25519" \
     -e "teamcraft_server_image=$(cat "$state/teamcraft-server.ref")" \
     -e "teamcraft_sfu_image=$(cat "$state/teamcraft-sfu.ref")" \
-    ${DRY_RUN_BRANDS:+-e @$here/inventory/brands.yml} ${DRY_RUN_ANSIBLE_ARGS:-} "$@"
+    ${DRY_RUN_BRANDS:+-e @$here/inventory/brands.yml} ${proxy:+-e @$here/inventory/external-proxy.yml} \
+    ${DRY_RUN_ANSIBLE_ARGS:-} "$@"
+}
+
+# A certificate of the test CA: name, subjectAltName list (DNS:a,DNS:b)
+test_cert() {
+  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 30 -subj "/CN=$1" \
+    -addext "subjectAltName=$2" -addext "basicConstraints=critical,CA:FALSE" \
+    -addext "keyUsage=critical,digitalSignature" -addext "extendedKeyUsage=serverAuth" -CA "$state/test-ca.crt" -CAkey "$state/test-ca.key" \
+    -keyout "$state/$1.key" -out "$state/$1.crt" 2>/dev/null
+}
+
+# The SFU's certificate as Plesk keeps it: key, certificate and CA in one file with a random name, named
+# by the vhost's nginx configuration (which Plesk rewrites on every renewal).
+plesk_sfu_cert() {
+  local name dir="/var/www/vhosts/system/$sfu_domain/conf"
+  name="cert-$(openssl rand -hex 4)"
+  test_cert sfu "DNS:$sfu_domain"
+  cat "$state/sfu.key" "$state/sfu.crt" "$state/test-ca.crt" \
+    | docker exec -i "$target" sh -c "mkdir -p /opt/psa-test/certificates $dir && cat > /opt/psa-test/certificates/$name"
+  printf 'server {\n\tssl_certificate             /opt/psa-test/certificates/%s;\n\tssl_certificate_key         /opt/psa-test/certificates/%s;\n}\n' "$name" "$name" \
+    | docker exec -i "$target" sh -c "cat > $dir/nginx.conf.new && mv $dir/nginx.conf.new $dir/nginx.conf && ln -sfn nginx.conf $dir/last_nginx.conf"
+}
+
+# nginx in front, as on a server that already runs one: installed before the playbook (its preflight
+# must refuse Caddy then), configured after it from the file the playbook writes.
+proxy_prepare() {
+  step "Test CA and certificates"
+  [ -f "$state/test-ca.crt" ] || openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 30 \
+    -subj "/CN=TeamCraft dry run CA" -addext "basicConstraints=critical,CA:TRUE" \
+    -addext "keyUsage=critical,keyCertSign,cRLSign" -keyout "$state/test-ca.key" -out "$state/test-ca.crt" 2>/dev/null
+  test_cert web "DNS:$domain,DNS:*.$domain,DNS:chat-b.172-31-250-10.sslip.io"
+  docker exec "$target" mkdir -p /etc/ssl/teamcraft-test
+  cat "$state/web.crt" "$state/test-ca.crt" | docker exec -i "$target" sh -c 'cat > /etc/ssl/teamcraft-test/fullchain.pem'
+  docker exec -i "$target" sh -c 'cat > /etc/ssl/teamcraft-test/privkey.pem && chmod 600 /etc/ssl/teamcraft-test/privkey.pem' < "$state/web.key"
+  plesk_sfu_cert
+  step "nginx on the target"
+  docker exec "$target" sh -c 'command -v nginx >/dev/null || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nginx >/dev/null)'
+  docker exec "$target" sh -c 'mkdir -p /var/www/letsencrypt && systemctl enable --now nginx >/dev/null 2>&1'
+  step "Preflight refuses Caddy while nginx holds 80/443"
+  if playbook --tags=preflight -e '{"caddy_enabled": true}' > "$state/preflight.log" 2>&1; then
+    echo "the preflight check let Caddy in next to nginx" >&2
+    return 1
+  fi
+  grep -q 'Ports 80/443 belong to another web server' "$state/preflight.log"
+}
+
+proxy_configure() {
+  step "nginx: the playbook's configuration"
+  docker exec "$target" sh -c 'cp /srv/teamcraft/reverse-proxy/nginx/teamcraft.conf /etc/nginx/conf.d/teamcraft.conf && nginx -t && systemctl reload nginx'
 }
 
 up() {
@@ -110,8 +164,10 @@ images() {
 }
 
 deploy() {
+  if [ -n "$proxy" ]; then proxy_prepare; fi
   step "Playbook: setup-all, start"
   playbook --tags=setup-all,start
+  if [ -n "$proxy" ]; then proxy_configure; fi
   step "Playbook again (idempotence: nothing may change)"
   playbook --tags=setup-all,start | tee "$state/second-run.log"
   if ! grep -Eq 'changed=0 +unreachable=0 +failed=0' "$state/second-run.log"; then
@@ -127,7 +183,11 @@ deploy() {
 
 verify() {
   local ca="$state/caddy-root.crt"
-  docker exec "$target" cat /home/tc-proxy/caddy-data/caddy/pki/authorities/local/root.crt > "$ca"
+  if [ -n "$proxy" ]; then
+    ca="$state/test-ca.crt"
+  else
+    docker exec "$target" cat /home/tc-proxy/caddy-data/caddy/pki/authorities/local/root.crt > "$ca"
+  fi
   local failed=0
   check() { # description, command...
     local what="$1"; shift
@@ -149,7 +209,12 @@ verify() {
     check "Keycloak realm over $ip" curl -fsS --cacert "$ca" --resolve "$id_domain:443:$bare" "https://$id_domain/realms/teamcraft/.well-known/openid-configuration"
     check "Keycloak admin console not public over $ip" sh -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --cacert '$ca' --resolve '$id_domain:443:$bare' https://$id_domain/admin/master/console/)\" = 404 ]"
     check "S3 CORS preflight over $ip" sh -c "curl -sS -o /dev/null -D - -X OPTIONS -H 'Origin: https://$domain' --cacert '$ca' --resolve '$s3_domain:443:$bare' https://$s3_domain/teamcraft/x | grep -qi 'access-control-allow-origin: https://$domain'"
-    check_http3 "HTTP/3 to Caddy over $ip" curl -fsS --http3-only --cacert "$ca" --resolve "$resolve" "https://$domain/healthz"
+    if [ -n "$proxy" ]; then
+      check "HTTP/2 through $proxy over $ip" sh -c "[ \"\$(curl -s -o /dev/null -w '%{http_version}' --http2 --cacert '$ca' --resolve '$resolve' https://$domain/healthz)\" = 2 ]"
+      check "gateway WebSocket upgrade through $proxy over $ip" sh -c "curl -s -o /dev/null -w '%{http_code}' --http1.1 -m 5 --cacert '$ca' --resolve '$resolve' -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' https://$domain/api/v1/gateway | grep -qx 101"
+    else
+      check_http3 "HTTP/3 to Caddy over $ip" curl -fsS --http3-only --cacert "$ca" --resolve "$resolve" "https://$domain/healthz"
+    fi
     # The QUIC handshake with a verified certificate proves UDP 4433 reachable and the exported
     # certificate in use; the SFU then closes the plain HTTP/3 request (it only speaks WebTransport).
     check_http3 "SFU QUIC + TLS over $ip" sh -c "curl -v -m 10 --http3-only --cacert '$ca' --resolve '$sfu_domain:4433:$bare' https://$sfu_domain:4433/ 2>&1 | grep -q 'SSL certificate verified'"
@@ -161,6 +226,48 @@ verify() {
     touch /srv/teamcraft/certs/sfu.crt; sleep 5
     after=$(run systemctl --user show -p ExecMainPID --value teamcraft-sfu.service)
     [ "$before" != "$after" ] && run systemctl --user is-active teamcraft-sfu.service'
+  if [ -n "$proxy" ]; then
+    step "Behind $proxy"
+    # Sign-in through the proxy (Keycloak's pages and redirects), then a gateway session that stays
+    # silent longer than nginx's default read timeout.
+    local token
+    if token=$(SSL_CERT_FILE="$ca" DEV_TOKEN_ISSUER="https://$id_domain/realms/teamcraft" python3 "$teamcraft_repo/dev/dev-token.py" alice 2>"$state/token.log"); then
+      echo "ok    sign-in through $proxy"
+      check "gateway session survives 75 s of silence" env SSL_CERT_FILE="$ca" python3 "$here/gateway-check.py" "https://$domain" "$token"
+    else
+      echo "FAIL  sign-in through $proxy ($(tail -n 1 "$state/token.log"))"; failed=1
+    fi
+    # A renewal the way Plesk does it: new file name, rewritten vhost configuration. The path unit
+    # copies it within seconds; the SFU restarts with it.
+    local before
+    # shellcheck disable=SC2016 # expands inside the target, not here
+    before=$(docker exec "$target" sh -c 'XDG_RUNTIME_DIR=/run/user/$(id -u tc-sfu) runuser -u tc-sfu -- systemctl --user show -p ExecMainPID --value teamcraft-sfu.service')
+    plesk_sfu_cert
+    check "renewed SFU certificate copied" wait_until "the renewed certificate" 30 docker exec "$target" sh -c \
+      "[ \"\$(openssl x509 -in /srv/teamcraft/certs/sfu.crt -noout -fingerprint)\" = '$(openssl x509 -in "$state/sfu.crt" -noout -fingerprint)' ]"
+    # shellcheck disable=SC2016 # expands inside the target, not here
+    check "SFU restarted for it" wait_until "the SFU restart" 30 docker exec "$target" sh -c \
+      '[ "$(XDG_RUNTIME_DIR=/run/user/$(id -u tc-sfu) runuser -u tc-sfu -- systemctl --user show -p ExecMainPID --value teamcraft-sfu.service)" != "'"$before"'" ]'
+    check_http3 "SFU QUIC + TLS with the renewed certificate" sh -c "curl -v -m 10 --http3-only --cacert '$ca' --resolve '$sfu_domain:4433:$target_ip4' https://$sfu_domain:4433/ 2>&1 | grep -q 'SSL certificate verified'"
+    # The other generated configurations: accepted by Apache's and HAProxy's own checks (Debian's
+    # packages, installed without starting them; nginx keeps the ports).
+    # shellcheck disable=SC2016 # expands inside the target, not here
+    check "Apache accepts the generated configuration" docker exec "$target" sh -c '
+      printf "#!/bin/sh\nexit 101\n" > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
+      (command -v apache2 >/dev/null || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq apache2 >/dev/null)
+      rm -f /usr/sbin/policy-rc.d
+      a2enmod -q ssl http2 headers proxy proxy_http proxy_wstunnel rewrite >/dev/null
+      cp /srv/teamcraft/reverse-proxy/apache/teamcraft.conf /etc/apache2/sites-available/teamcraft.conf
+      a2ensite -q teamcraft >/dev/null && apache2ctl configtest'
+    # shellcheck disable=SC2016 # expands inside the target, not here
+    check "HAProxy accepts the generated configuration" docker exec "$target" sh -c '
+      printf "#!/bin/sh\nexit 101\n" > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
+      (command -v haproxy >/dev/null || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq haproxy >/dev/null)
+      rm -f /usr/sbin/policy-rc.d
+      mkdir -p /etc/haproxy/certs && cat /etc/ssl/teamcraft-test/fullchain.pem /etc/ssl/teamcraft-test/privkey.pem > /etc/haproxy/certs/web.pem
+      printf "defaults\n    mode http\n    timeout connect 5s\n    timeout client 1m\n    timeout server 1m\n" > /tmp/haproxy-defaults.cfg
+      haproxy -c -f /tmp/haproxy-defaults.cfg -f /srv/teamcraft/reverse-proxy/haproxy/teamcraft.cfg'
+  fi
   local port
   for port in 5432 8080 8081 8180 9180 3900 3901 3903; do
     check "port $port not reachable from outside" sh -c "! timeout 3 bash -c \"exec 3<>/dev/tcp/$target_ip4/$port\" 2>/dev/null"
@@ -195,7 +302,9 @@ verify() {
   check "start" playbook --tags=start
   wait_until "the server after start" 120 curl -fsS --cacert "$ca" --resolve "$domain:443:$target_ip4" "https://$domain/readyz" || failed=1
   step "Messages between two users (TeamCraft e2e harness)"
-  if (cd "$teamcraft_repo" && SSL_CERT_FILE="$ca" DEV_TOKEN_ISSUER="https://$id_domain/realms/teamcraft" \
+  if [ -n "${DRY_RUN_SKIP_E2E:-}" ]; then
+    echo "skip  e2e (DRY_RUN_SKIP_E2E)"
+  elif (cd "$teamcraft_repo" && SSL_CERT_FILE="$ca" DEV_TOKEN_ISSUER="https://$id_domain/realms/teamcraft" \
       E2E_DEPLOYED_URL="https://$domain" SQLX_OFFLINE=true \
       cargo test -q -p teamcraft-e2e --features e2e --test suite -- --exact deployed::a_deployed_instance_is_healthy_and_delivers_messages --nocapture); then
     echo "ok    e2e: login and encrypted messages both ways"

@@ -1,0 +1,97 @@
+{# The locations of one site, shared by nginx/teamcraft.conf and the Plesk directives. #}
+{% macro headers(indent) %}
+{{ indent }}proxy_http_version 1.1;
+{{ indent }}proxy_set_header Host $host;
+{{ indent }}# The client's address (replaces anything the client sent), scheme and host name as it asked.
+{{ indent }}proxy_set_header X-Forwarded-For $remote_addr;
+{{ indent }}proxy_set_header X-Forwarded-Proto $scheme;
+{{ indent }}proxy_set_header X-Forwarded-Host $host;
+{{ indent }}proxy_set_header X-Forwarded-Port $server_port;
+{% endmacro %}
+{% macro locations(kind, host, port, indent='    ') %}
+{% set i = indent %}
+{% set upstream = 'http://' ~ teamcraft_upstream_host ~ ':' ~ port %}
+{% if kind == 'server' %}
+{{ i }}# Internal API (SFU reports, mail inbox): loopback only, never from the internet.
+{{ i }}location ^~ /api/internal/ {
+{{ i }}    return 404;
+{{ i }}}
+{% for path in ['/api/v1/gateway', '/api/v1/rendezvous'] %}
+{{ i }}# WebSocket ({{ 'realtime gateway' if 'gateway' in path else 'device rendezvous' }}). Clients send a heartbeat every 30 s; the timeouts only
+{{ i }}# have to be longer than that.
+{{ i }}location = {{ path }} {
+{{ i }}    proxy_pass {{ upstream }};
+{{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Upgrade $http_upgrade;
+{{ i }}    proxy_set_header Connection "upgrade";
+{{ i }}    proxy_read_timeout 1h;
+{{ i }}    proxy_send_timeout 1h;
+{{ i }}    proxy_buffering off;
+{{ i }}}
+{% endfor %}
+{{ i }}location / {
+{{ i }}    proxy_pass {{ upstream }};
+{{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
+{{ i }}    # The server accepts up to 4 MiB (security.max_request_body_bytes); attachments go to S3 directly.
+{{ i }}    client_max_body_size 8m;
+{{ i }}}
+{% elif kind == 'keycloak' %}
+{% if keycloak_admin_console_public %}
+{{ i }}location / {
+{{ i }}    proxy_pass {{ upstream }};
+{{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
+{{ i }}    # Keycloak's responses carry large cookies and headers.
+{{ i }}    proxy_buffer_size 128k;
+{{ i }}    proxy_buffers 4 256k;
+{{ i }}    proxy_busy_buffers_size 256k;
+{{ i }}}
+{% else %}
+{{ i }}# What users and apps need; the admin console and admin API stay on loopback (SSH tunnel).
+{% for loc in ['^~ /realms/', '^~ /resources/', '= /robots.txt'] %}
+{{ i }}location {{ loc }} {
+{{ i }}    proxy_pass {{ upstream }};
+{{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
+{{ i }}    # Keycloak's responses carry large cookies and headers.
+{{ i }}    proxy_buffer_size 128k;
+{{ i }}    proxy_buffers 4 256k;
+{{ i }}    proxy_busy_buffers_size 256k;
+{{ i }}}
+{% endfor %}
+{{ i }}location / {
+{{ i }}    return 404;
+{{ i }}}
+{% endif %}
+{% elif kind == 's3' %}
+{{ i }}# S3 for encrypted attachments: clients up- and download directly with presigned URLs, which are
+{{ i }}# signed for this host name (Host must reach Garage unchanged). The web client needs CORS, which
+{{ i }}# Garage leaves to the bucket: answered here, for every host name of the web client.
+{{ i }}location / {
+{{ i }}    proxy_pass {{ upstream }};
+{{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
+{{ i }}    client_max_body_size 0;
+{{ i }}    proxy_request_buffering off;
+{{ i }}    proxy_buffering off;
+{{ i }}    proxy_read_timeout 10m;
+{{ i }}    proxy_send_timeout 10m;
+{{ i }}    set $teamcraft_cors_origin "{{ proxy_snippets_web_origins[0] }}";
+{{ i }}    if ($http_origin ~ "{{ proxy_snippets_web_origins_regex }}") {
+{{ i }}        set $teamcraft_cors_origin $http_origin;
+{{ i }}    }
+{{ i }}    proxy_hide_header Access-Control-Allow-Origin;
+{{ i }}    add_header Access-Control-Allow-Origin $teamcraft_cors_origin always;
+{{ i }}    add_header Access-Control-Allow-Methods "GET, HEAD, PUT, POST, DELETE" always;
+{{ i }}    add_header Access-Control-Allow-Headers "*" always;
+{{ i }}    add_header Access-Control-Expose-Headers "ETag" always;
+{{ i }}    add_header Access-Control-Max-Age "3600" always;
+{{ i }}    add_header Vary "Origin" always;
+{{ i }}    if ($request_method = OPTIONS) {
+{{ i }}        return 204;
+{{ i }}    }
+{{ i }}}
+{% elif kind == 'calcraft' %}
+{{ i }}location / {
+{{ i }}    proxy_pass {{ upstream }};
+{{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
+{{ i }}    client_max_body_size 16m;
+{{ i }}}
+{% endif %}
+{% endmacro %}

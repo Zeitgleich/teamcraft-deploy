@@ -37,7 +37,8 @@
     base_service_name: teamcraft-sfu
     base_service_changed: "{{ teamcraft_sfu_unit.changed or teamcraft_sfu_config.changed or base_service_secrets_changed }}"
 
-# The SFU reads its certificate at start only; a renewed one (copied by tc-proxy's timer) restarts it.
+# The SFU reads its certificate at start only; a renewed one (copied by Caddy's export or the root timer
+# below) restarts it.
 - name: Certificate watch
   ansible.builtin.template:
     src: "{{ item }}.j2"
@@ -57,3 +58,68 @@
   become: true
   become_user: tc-sfu
   environment: "{{ base_service_env }}"
+
+# Without Caddy (or by choice): an existing certificate, copied by root when it changes.
+- name: Existing certificate
+  when: teamcraft_sfu_certificate_external | bool
+  block:
+    - name: Certificate directory
+      ansible.builtin.file:
+        path: "{{ teamcraft_cert_dir }}"
+        state: directory
+        owner: root
+        group: tc-certs
+        mode: "0750"
+
+    - name: Certificate copy script
+      ansible.builtin.template:
+        src: sfu-cert-copy.sh.j2
+        dest: /usr/local/libexec/teamcraft-sfu-cert-copy
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Certificate copy units
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "/etc/systemd/system/{{ item }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop: [teamcraft-sfu-cert.service, teamcraft-sfu-cert.timer, teamcraft-sfu-cert.path]
+
+    - name: Certificate copy timer and path enabled
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+        daemon_reload: true
+      loop: [teamcraft-sfu-cert.timer, teamcraft-sfu-cert.path]
+
+    # Fails here, with the script's reason, when the files are missing or don't fit the host name.
+    - name: Certificate copied now
+      ansible.builtin.systemd_service:
+        name: teamcraft-sfu-cert.service
+        state: started
+      changed_when: false
+
+- name: No copy of an existing certificate
+  when: not teamcraft_sfu_certificate_external | bool
+  block:
+    - name: Certificate copy timer and path stopped
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: false
+      loop: [teamcraft-sfu-cert.timer, teamcraft-sfu-cert.path]
+      failed_when: false
+
+    - name: Certificate copy units removed
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/teamcraft-sfu-cert.service
+        - /etc/systemd/system/teamcraft-sfu-cert.timer
+        - /etc/systemd/system/teamcraft-sfu-cert.path
+        - /usr/local/libexec/teamcraft-sfu-cert-copy

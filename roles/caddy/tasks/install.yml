@@ -9,6 +9,7 @@
       groups: [tc-certs]
 
 - name: Certificate directory (written here, read by the SFU)
+  when: not teamcraft_sfu_certificate_external | bool
   ansible.builtin.file:
     path: "{{ teamcraft_cert_dir }}"
     state: directory
@@ -53,30 +54,46 @@
     base_service_name: caddy
     base_service_changed: "{{ caddy_unit.changed or caddy_config.changed }}"
 
-- name: SFU certificate export script
-  ansible.builtin.template:
-    src: sfu-cert-export.sh.j2
-    dest: /home/tc-proxy/bin/sfu-cert-export.sh
-    owner: tc-proxy
-    group: tc-proxy
-    mode: "0750"
+# The SFU's certificate is Caddy's unless teamcraft_sfu_certificate_* name another one.
+- name: SFU certificate export
+  when: not teamcraft_sfu_certificate_external | bool
+  block:
+    - name: SFU certificate export script
+      ansible.builtin.template:
+        src: sfu-cert-export.sh.j2
+        dest: /home/tc-proxy/bin/sfu-cert-export.sh
+        owner: tc-proxy
+        group: tc-proxy
+        mode: "0750"
 
-- name: SFU certificate export service and timer
-  ansible.builtin.template:
-    src: "{{ item }}.j2"
-    dest: "/home/tc-proxy/.config/systemd/user/{{ item }}"
-    owner: tc-proxy
-    group: tc-proxy
-    mode: "0644"
-  loop: [sfu-cert-export.service, sfu-cert-export.timer]
+    - name: SFU certificate export service and timer
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "/home/tc-proxy/.config/systemd/user/{{ item }}"
+        owner: tc-proxy
+        group: tc-proxy
+        mode: "0644"
+      loop: [sfu-cert-export.service, sfu-cert-export.timer]
 
-- name: SFU certificate export timer enabled
+    - name: SFU certificate export timer enabled
+      ansible.builtin.systemd_service:
+        name: sfu-cert-export.timer
+        state: started
+        enabled: true
+        daemon_reload: true
+        scope: user
+      become: true
+      become_user: tc-proxy
+      environment: "{{ base_service_env }}"
+
+- name: No SFU certificate export (another certificate is used)
   ansible.builtin.systemd_service:
     name: sfu-cert-export.timer
-    state: started
-    enabled: true
-    daemon_reload: true
+    state: stopped
+    enabled: false
     scope: user
   become: true
   become_user: tc-proxy
   environment: "{{ base_service_env }}"
+  when: teamcraft_sfu_certificate_external | bool
+  failed_when: false

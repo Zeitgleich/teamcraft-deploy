@@ -1,0 +1,14 @@
+- name: Install
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [setup-all, install-all, setup-proxy-snippets, install-proxy-snippets]
+  when: not caddy_enabled
+  tags: [setup-all, install-all, setup-proxy-snippets, install-proxy-snippets]
+
+- name: Uninstall
+  ansible.builtin.file:
+    path: "{{ teamcraft_proxy_snippets_dir }}"
+    state: absent
+  when: caddy_enabled
+  tags: [setup-all, setup-proxy-snippets]

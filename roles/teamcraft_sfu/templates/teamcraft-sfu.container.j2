@@ -9,7 +9,8 @@ ContainerName=teamcraft-sfu
 # Host network: rootless user-mode networking (pasta) adds per-packet overhead that matters for
 # media forwarding.
 Network=host
-# Certificate exported by caddy's timer; tc-sfu reads it via group tc-certs.
+# Certificate copied by Caddy's export timer or the root timer for an existing certificate; tc-sfu reads
+# it via group tc-certs.
 Volume={{ teamcraft_cert_dir }}:/certs:ro
 Volume=/home/tc-sfu/config/call-signing.pub.pem:/etc/teamcraft/call-signing.pub.pem:ro,Z
 GroupAdd=keep-groups
@@ -22,8 +23,8 @@ Environment=TEAMCRAFT_SFU_CERT=/certs/sfu.crt
 Environment=TEAMCRAFT_SFU_KEY=/certs/sfu.key
 Environment=TEAMCRAFT_SFU_JOIN_TOKEN_PUBLIC_KEY=/etc/teamcraft/call-signing.pub.pem
 Environment=TEAMCRAFT_SFU_JOIN_TOKEN_ISSUER=https://{{ teamcraft_domain }}
-# Join and leave reports go to the internal API over loopback (Caddy refuses /api/internal/).
-Environment=TEAMCRAFT_SFU_SERVER_URL=http://127.0.0.1:{{ teamcraft_ports.server }}
+# Join and leave reports go to the internal API over loopback (the proxy refuses /api/internal/).
+Environment=TEAMCRAFT_SFU_SERVER_URL=http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.server }}
 Environment=RUST_LOG={{ teamcraft_sfu_log_filter }}
 Environment=NO_COLOR=1
 User=65532

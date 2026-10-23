@@ -10,6 +10,7 @@ IPv4 and IPv6. Certificates come from Let's Encrypt; a timer copies the SFU's ce
 | `caddy_acme_email` | `teamcraft_admin_email` | Let's Encrypt account                                                   |
 | `caddy_image`      | pinned                  | image                                                                   |
 
-With `caddy_enabled: false` you put your own proxy in front: forward `teamcraft_domain` to
-`127.0.0.1:8080` (WebSockets on `/api/v1/gateway` and `/api/v1/rendezvous`, set `X-Forwarded-For`),
-refuse `/api/internal/`, and provide the SFU certificate at `/srv/teamcraft/certs/sfu.{crt,key}`.
+With `caddy_enabled: false` you put your own proxy in front (nginx, Apache, Plesk, Traefik, HAProxy,
+another Caddy): the playbook then writes configurations for it to `/srv/teamcraft/reverse-proxy/` and
+the SFU takes an existing certificate ([../reverse-proxy.md](../reverse-proxy.md)). The preflight check
+stops a run with Caddy enabled when another web server holds 80/443.

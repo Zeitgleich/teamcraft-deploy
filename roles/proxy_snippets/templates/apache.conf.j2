@@ -1,0 +1,73 @@
+# Managed by Ansible (teamcraft-deploy, role proxy_snippets): TeamCraft behind Apache 2.4.47 or newer
+# (docs/proxies/apache.md). Copy it to /etc/apache2/sites-available/teamcraft.conf, then:
+#   a2enmod ssl http2 headers proxy proxy_http proxy_wstunnel rewrite
+#   a2ensite teamcraft && apachectl configtest && systemctl reload apache2
+# Certificates per host name (teamcraft_proxy_certificate_path / _key_path), e.g. from certbot
+# (certbot certonly --apache -d <host>). Port 80 and its redirect are left to your existing setup.
+{% for site in proxy_snippets_sites %}
+{% set kind, host, port = site.split() %}
+{% set upstream = 'http://' ~ teamcraft_upstream_host ~ ':' ~ port %}
+
+<VirtualHost *:443>
+    ServerName {{ host }}
+    SSLEngine on
+    SSLCertificateFile {{ teamcraft_proxy_certificate_path | replace('{host}', host) }}
+    SSLCertificateKeyFile {{ teamcraft_proxy_certificate_key_path | replace('{host}', host) }}
+    Protocols h2 http/1.1
+
+    ProxyRequests Off
+    # Host unchanged (brands, S3 signatures); mod_proxy adds X-Forwarded-For/-Host itself.
+    ProxyPreserveHost On
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-Port "443"
+{% if kind == 'server' %}
+    # Internal API (SFU reports, mail inbox): loopback only, never from the internet.
+    ProxyPass /api/internal/ !
+    <Location "/api/internal/">
+        Require all denied
+    </Location>
+    # WebSockets (gateway, rendezvous). Clients send a heartbeat every 30 s.
+    ProxyPass /api/v1/gateway {{ upstream }}/api/v1/gateway upgrade=websocket timeout=3600
+    ProxyPass /api/v1/rendezvous {{ upstream }}/api/v1/rendezvous upgrade=websocket timeout=3600
+    ProxyPass / {{ upstream }}/
+    ProxyPassReverse / {{ upstream }}/
+    # The server accepts up to 4 MiB; attachments go to S3 directly.
+    LimitRequestBody 8388608
+{% elif kind == 'keycloak' %}
+{% if keycloak_admin_console_public %}
+    ProxyPass / {{ upstream }}/
+    ProxyPassReverse / {{ upstream }}/
+{% else %}
+    # What users and apps need; the admin console and admin API stay on loopback (SSH tunnel).
+    ProxyPass /realms/ {{ upstream }}/realms/
+    ProxyPass /resources/ {{ upstream }}/resources/
+    ProxyPass /robots.txt {{ upstream }}/robots.txt
+    ProxyPassReverse / {{ upstream }}/
+    <LocationMatch "^/(?!realms/|resources/|robots\.txt$)">
+        Require all denied
+    </LocationMatch>
+{% endif %}
+{% elif kind == 's3' %}
+    # S3 for encrypted attachments: presigned URLs are signed for this host name and path, so both
+    # reach Garage unchanged (ProxyPreserveHost, nocanon). CORS for the web client, answered here.
+    AllowEncodedSlashes NoDecode
+    ProxyPass / {{ upstream }}/ nocanon timeout=600
+    ProxyPassReverse / {{ upstream }}/
+    LimitRequestBody 0
+    SetEnvIf Origin "{{ proxy_snippets_web_origins_regex }}" TEAMCRAFT_CORS_ORIGIN=$0
+    Header always unset Access-Control-Allow-Origin
+    Header always set Access-Control-Allow-Origin "%{TEAMCRAFT_CORS_ORIGIN}e" env=TEAMCRAFT_CORS_ORIGIN
+    Header always set Access-Control-Allow-Methods "GET, HEAD, PUT, POST, DELETE"
+    Header always set Access-Control-Allow-Headers "*"
+    Header always set Access-Control-Expose-Headers "ETag"
+    Header always set Access-Control-Max-Age "3600"
+    Header always merge Vary "Origin"
+    RewriteEngine On
+    RewriteCond %{REQUEST_METHOD} =OPTIONS
+    RewriteRule ^ - [R=204,L]
+{% else %}
+    ProxyPass / {{ upstream }}/
+    ProxyPassReverse / {{ upstream }}/
+{% endif %}
+</VirtualHost>
+{% endfor %}

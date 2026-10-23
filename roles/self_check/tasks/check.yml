@@ -37,7 +37,8 @@
   ansible.builtin.uri:
     url: "https://{{ teamcraft_domain }}/api/internal/v1/calls/participants/joined"
     method: POST
-    status_code: 404
+    # 404 from Caddy and the nginx configuration; 403 from Apache's and Traefik's.
+    status_code: [403, 404]
     validate_certs: "{{ self_check_validate_certs }}"
   delegate_to: localhost
   become: false

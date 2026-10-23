@@ -1,0 +1,39 @@
+# Configurations for your proxy, nothing runs from them. Readable by root only: they name certificate
+# paths, nothing secret, but the directory is root's.
+- name: Directories
+  ansible.builtin.file:
+    path: "{{ teamcraft_proxy_snippets_dir }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop: ["", nginx, plesk, apache, haproxy, traefik, caddy]
+
+- name: Configurations
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ teamcraft_proxy_snippets_dir }}/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0640"
+  loop:
+    - {src: README.txt.j2, dest: README.txt}
+    - {src: nginx.conf.j2, dest: nginx/teamcraft.conf}
+    - {src: apache.conf.j2, dest: apache/teamcraft.conf}
+    - {src: haproxy.cfg.j2, dest: haproxy/teamcraft.cfg}
+    - {src: traefik.yml.j2, dest: traefik/teamcraft.yml}
+    - {src: ../../caddy/templates/Caddyfile.j2, dest: caddy/Caddyfile}
+  loop_control:
+    label: "{{ item.dest }}"
+
+- name: Plesk directives, one file per domain
+  ansible.builtin.template:
+    src: plesk.conf.j2
+    dest: "{{ teamcraft_proxy_snippets_dir }}/plesk/{{ proxy_site[1] }}.conf"
+    owner: root
+    group: root
+    mode: "0640"
+  loop: "{{ proxy_snippets_sites | map('split') | list }}"
+  loop_control:
+    loop_var: proxy_site
+    label: "{{ proxy_site[1] }}"

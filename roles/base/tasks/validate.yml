@@ -31,3 +31,13 @@
       only, and teamcraft_domain among them (docs/components/branding.md).
     quiet: true
   when: teamcraft_brands | length > 0
+
+- name: The SFU has a certificate
+  ansible.builtin.assert:
+    that: caddy_enabled or teamcraft_sfu_certificate_external | bool
+    fail_msg: >-
+      Without Caddy the SFU needs an existing certificate for {{ teamcraft_sfu_hostname }}: set
+      teamcraft_sfu_certificate_path (and _key_path), or teamcraft_sfu_certificate_nginx_conf on Plesk
+      (docs/reverse-proxy.md).
+    quiet: true
+  when: teamcraft_sfu_enabled

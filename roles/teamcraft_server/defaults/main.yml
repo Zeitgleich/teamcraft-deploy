@@ -1,4 +1,4 @@
-# The TeamCraft server (REST API, gateway, web client), rootless as tc-server, behind Caddy.
+# The TeamCraft server (REST API, gateway, web client), rootless as tc-server, behind the reverse proxy.
 teamcraft_server_enabled: true
 teamcraft_server_image: "{{ teamcraft_image_registry }}/teamcraft-server:{{ teamcraft_version }}"
 teamcraft_server_memory: 1g
@@ -14,12 +14,12 @@ teamcraft_server_web_checksum: ""
 # Deprovisioning: poll the identity provider for disabled or deleted users (needs the server
 # client's service account; the bundled Keycloak has it).
 teamcraft_server_oidc_sync_enabled: "{{ keycloak_enabled }}"
-# Bundled Keycloak: keys and admin API over loopback instead of a round trip through Caddy.
+# Bundled Keycloak: keys and admin API over loopback instead of a round trip through the proxy.
 teamcraft_server_oidc_jwks_uri: >-
-  {{ ('http://127.0.0.1:' ~ teamcraft_ports.keycloak ~ '/realms/' ~ keycloak_realm ~ '/protocol/openid-connect/certs')
+  {{ ('http://' ~ teamcraft_upstream_host ~ ':' ~ teamcraft_ports.keycloak ~ '/realms/' ~ keycloak_realm ~ '/protocol/openid-connect/certs')
      if keycloak_enabled else '' }}
 teamcraft_server_oidc_admin_url: >-
-  {{ ('http://127.0.0.1:' ~ teamcraft_ports.keycloak ~ '/admin/realms/' ~ keycloak_realm) if keycloak_enabled else '' }}
+  {{ ('http://' ~ teamcraft_upstream_host ~ ':' ~ teamcraft_ports.keycloak ~ '/admin/realms/' ~ keycloak_realm) if keycloak_enabled else '' }}
 teamcraft_server_oidc_sync_client_secret: >-
   {{ base_secrets.keycloak_server_client_secret if keycloak_enabled else (base_secrets.oidc_sync_client_secret | default('')) }}
 teamcraft_server_oidc_roles:

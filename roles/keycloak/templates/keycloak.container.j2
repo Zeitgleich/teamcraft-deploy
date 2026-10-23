@@ -5,7 +5,7 @@ Description=TeamCraft identity provider (Keycloak)
 [Container]
 Image={{ keycloak_image }}
 ContainerName=teamcraft-keycloak
-# Host network inside tc-keycloak's user namespace; HTTP on loopback only (Caddy terminates TLS).
+# Host network inside tc-keycloak's user namespace; HTTP on loopback only (the proxy terminates TLS).
 Network=host
 Exec=start --import-realm
 Volume=/home/tc-keycloak/config/import:/opt/keycloak/data/import:ro,Z
@@ -15,7 +15,7 @@ Environment=KC_DB_USERNAME=keycloak
 Secret=keycloak_db_password,type=env,target=KC_DB_PASSWORD
 Environment=KC_HOSTNAME=https://{{ keycloak_hostname }}
 Environment=KC_HTTP_ENABLED=true
-Environment=KC_HTTP_HOST=127.0.0.1
+Environment=KC_HTTP_HOST={{ teamcraft_upstream_address }}
 Environment=KC_HTTP_PORT={{ teamcraft_ports.keycloak }}
 Environment=KC_HTTP_MANAGEMENT_PORT={{ teamcraft_ports.keycloak_management }}
 Environment=KC_PROXY_HEADERS=xforwarded

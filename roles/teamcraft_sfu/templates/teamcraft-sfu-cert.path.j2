@@ -1,0 +1,17 @@
+# Managed by Ansible (teamcraft-deploy, role teamcraft_sfu).
+[Unit]
+Description=Copy the TeamCraft SFU certificate when it is renewed
+
+[Path]
+{% if teamcraft_sfu_certificate_nginx_conf | length > 0 %}
+PathChanged={{ teamcraft_sfu_certificate_nginx_conf }}
+{% else %}
+PathChanged={{ teamcraft_sfu_certificate_path }}
+{% if teamcraft_sfu_certificate_key_path != teamcraft_sfu_certificate_path %}
+PathChanged={{ teamcraft_sfu_certificate_key_path }}
+{% endif %}
+{% endif %}
+Unit=teamcraft-sfu-cert.service
+
+[Install]
+WantedBy=paths.target

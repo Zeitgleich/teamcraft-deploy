@@ -1,0 +1,59 @@
+#!/bin/sh
+# Managed by Ansible (teamcraft-deploy, role teamcraft_sfu). Runs as root: copies the existing certificate
+# for {{ teamcraft_sfu_hostname }} (certbot, Plesk, ...) into {{ teamcraft_cert_dir }}, readable by
+# group tc-certs, when it changed. The SFU's path unit then restarts it.
+set -eu
+host="{{ teamcraft_sfu_hostname }}"
+dest="{{ teamcraft_cert_dir }}"
+{% if teamcraft_sfu_certificate_nginx_conf | length > 0 %}
+# The nginx configuration names the files (Plesk renames them on every renewal).
+conf="{{ teamcraft_sfu_certificate_nginx_conf }}"
+if [ ! -r "$conf" ]; then echo "$conf not found (no certificate for $host yet?)" >&2; exit 1; fi
+cert=$(sed -n 's/^[[:space:]]*ssl_certificate[[:space:]]\{1,\}"\{0,1\}\([^";]*\)"\{0,1\};.*/\1/p' "$conf" | head -n 1)
+key=$(sed -n 's/^[[:space:]]*ssl_certificate_key[[:space:]]\{1,\}"\{0,1\}\([^";]*\)"\{0,1\};.*/\1/p' "$conf" | head -n 1)
+if [ -z "$cert" ] || [ -z "$key" ]; then echo "$conf names no ssl_certificate / ssl_certificate_key" >&2; exit 1; fi
+{% else %}
+cert="{{ teamcraft_sfu_certificate_path }}"
+key="{{ teamcraft_sfu_certificate_key_path }}"
+{% endif %}
+for file in "$cert" "$key"; do
+  if [ ! -r "$file" ]; then echo "$file not found" >&2; exit 1; fi
+done
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+# Key and certificates may share one file (Plesk: key, certificate and CA chain in one): split it.
+openssl pkey -in "$key" -out "$work/key.pem"
+awk -v dir="$work" '
+  /-----BEGIN CERTIFICATE-----/ { n++; out = sprintf("%s/cert-%03d.pem", dir, n) }
+  out != "" { print > out }
+  /-----END CERTIFICATE-----/ { close(out); out = "" }
+' "$cert"
+# The leaf (the certificate of the key) first, then the rest of the chain in its order.
+want=$(openssl pkey -in "$work/key.pem" -pubout)
+: > "$work/chain.pem"
+leaf=""
+for file in "$work"/cert-*.pem; do
+  [ -f "$file" ] || continue
+  if [ -z "$leaf" ] && [ "$(openssl x509 -in "$file" -noout -pubkey)" = "$want" ]; then
+    leaf="$file"
+  else
+    cat "$file" >> "$work/chain.pem"
+  fi
+done
+if [ -z "$leaf" ]; then echo "no certificate in $cert matches the key in $key" >&2; exit 1; fi
+if ! openssl x509 -in "$leaf" -noout -checkhost "$host" | grep -q 'does match'; then
+  echo "the certificate in $cert is not valid for $host" >&2; exit 1
+fi
+if ! openssl x509 -in "$leaf" -noout -checkend 0 >/dev/null; then
+  echo "the certificate in $cert has expired" >&2; exit 1
+fi
+cat "$leaf" "$work/chain.pem" > "$work/sfu.crt"
+
+if cmp -s "$work/sfu.crt" "$dest/sfu.crt" && cmp -s "$work/key.pem" "$dest/sfu.key"; then exit 0; fi
+install -m 0640 -o root -g tc-certs "$work/key.pem" "$dest/sfu.key.new"
+install -m 0640 -o root -g tc-certs "$work/sfu.crt" "$dest/sfu.crt.new"
+# Key first: the SFU's path unit fires on sfu.crt.
+mv "$dest/sfu.key.new" "$dest/sfu.key"
+mv "$dest/sfu.crt.new" "$dest/sfu.crt"
+echo "copied the certificate for $host from $cert"

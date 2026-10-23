@@ -10,6 +10,8 @@
     - role: garage
     - role: keycloak
     - role: caddy
+    # Without Caddy: configurations for your own proxy (docs/reverse-proxy.md).
+    - role: proxy_snippets
     - role: teamcraft_server
     - role: teamcraft_sfu
     - role: calcraft

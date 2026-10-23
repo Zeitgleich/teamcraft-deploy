@@ -26,6 +26,13 @@ teamcraft_admin_email: admin@example.com
 # (docs/components/push-gateway.md):
 # teamcraft_push_gateway_url: https://push-gw.zeitgleich.de   # the default; set "" to turn it off
 
+# A server that already runs a web server on 80/443 (nginx, Apache, Plesk, ...): no Caddy, your
+# proxy forwards to TeamCraft, the SFU takes an existing certificate (docs/reverse-proxy.md):
+# caddy_enabled: false
+# base_firewall_enabled: false
+# teamcraft_sfu_certificate_path: /etc/letsencrypt/live/sfu.chat.example.com/fullchain.pem
+# teamcraft_sfu_certificate_key_path: /etc/letsencrypt/live/sfu.chat.example.com/privkey.pem
+
 # Several brands (host names with their own name, logo, colors) on this server:
 # docs/components/branding.md (teamcraft_brands).
 
