@@ -8,8 +8,13 @@
 {{ indent }}proxy_set_header X-Forwarded-Host $host;
 {{ indent }}proxy_set_header X-Forwarded-Port $server_port;
 {% endmacro %}
-{% macro locations(kind, host, port, indent='    ', alt_svc=false) %}
+{% macro locations(kind, host, port, indent='    ', alt_svc=false, plesk=false) %}
 {% set i = indent %}
+{# Plesk's own vhost already has "location /" (towards Apache, while proxy mode is on): there the
+   catch-all is a regex, which wins over that prefix location. The more specific locations below are
+   "=" or "^~" and still win over the regex; the regex leaves out the ACME challenges, which Plesk answers
+   for its Let's Encrypt renewals. #}
+{% set catch_all = '~ ^/(?![.]well-known/acme-challenge/)' if plesk else '/' %}
 {% set upstream = 'http://' ~ teamcraft_upstream_host ~ ':' ~ port %}
 {% if kind == 'server' %}
 {{ i }}# Internal API (SFU reports, mail inbox): loopback only, never from the internet.
@@ -28,7 +33,7 @@
 {{ i }}    proxy_buffering off;
 {{ i }}}
 {% endfor %}
-{{ i }}location / {
+{{ i }}location {{ catch_all }} {
 {{ i }}    proxy_pass {{ upstream }};
 {{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
 {{ i }}    # The server accepts up to 4 MiB (security.max_request_body_bytes); attachments go to S3 directly.
@@ -36,7 +41,7 @@
 {{ i }}}
 {% elif kind == 'keycloak' %}
 {% if keycloak_admin_console_public %}
-{{ i }}location / {
+{{ i }}location {{ catch_all }} {
 {{ i }}    proxy_pass {{ upstream }};
 {{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
 {{ i }}    # Keycloak's responses carry large cookies and headers.
@@ -56,7 +61,7 @@
 {{ i }}    proxy_busy_buffers_size 256k;
 {{ i }}}
 {% endfor %}
-{{ i }}location / {
+{{ i }}location {{ catch_all }} {
 {{ i }}    return 404;
 {{ i }}}
 {% endif %}
@@ -64,7 +69,7 @@
 {{ i }}# S3 for encrypted attachments: clients up- and download directly with presigned URLs, which are
 {{ i }}# signed for this host name (Host must reach Garage unchanged). The web client needs CORS, which
 {{ i }}# Garage leaves to the bucket: answered here, for every host name of the web client.
-{{ i }}location / {
+{{ i }}location {{ catch_all }} {
 {{ i }}    proxy_pass {{ upstream }};
 {{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
 {{ i }}    client_max_body_size 0;
@@ -91,7 +96,7 @@
 {{ i }}    }
 {{ i }}}
 {% elif kind == 'calcraft' %}
-{{ i }}location / {
+{{ i }}location {{ catch_all }} {
 {{ i }}    proxy_pass {{ upstream }};
 {{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
 {{ i }}    client_max_body_size 16m;

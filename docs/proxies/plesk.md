@@ -93,11 +93,17 @@ the file). If your Plesk keeps it elsewhere, point the setting there.
 For `chat.example.com`, `id.chat.example.com`, `s3.chat.example.com` (and `cal.`, brand host names):
 
 1. **Websites & Domains → the domain → Apache & nginx Settings**.
-2. Under *nginx settings*, **switch Proxy mode off** and press **Apply** – on its own first. With proxy
-   mode on, Plesk already has a `location /` (towards Apache) and refuses the directives with
-   `duplicate location "/"`; switching it off and adding the directives in the same save doesn't work.
+2. Under *nginx settings*, turn **Serve static files directly by nginx** off. Its regex location for
+   `.js`, `.css`, `.png`, … would otherwise answer from the domain's empty document root, ahead of
+   TeamCraft (the web client's files, brand logos).
 3. Paste the content of `/srv/teamcraft/reverse-proxy/plesk/<domain>.conf` into **Additional nginx
    directives** and press **OK**. Plesk checks the configuration before it saves.
+
+*Proxy mode* can stay as it is. Plesk's vhost always has its own `location /` (towards Apache while proxy
+mode is on), so the directives don't add a second one: their catch-all is a regex,
+`location ~ ^/(?![.]well-known/acme-challenge/)`, which nginx prefers over any prefix location. The
+specific locations (`= /api/v1/gateway`, `^~ /api/internal/`, …) still win over the regex, and the
+regex leaves out `/.well-known/acme-challenge/` so Plesk keeps answering its Let's Encrypt renewals.
 
 ```sh
 ssh chat.example.com sudo cat /srv/teamcraft/reverse-proxy/plesk/chat.example.com.conf
@@ -125,7 +131,7 @@ location = /api/v1/gateway {
     proxy_buffering off;
 }
 # location = /api/v1/rendezvous { the same }
-location / {
+location ~ ^/(?![.]well-known/acme-challenge/) {
     proxy_pass http://127.0.0.1:8080;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
@@ -138,8 +144,7 @@ location / {
 }
 ```
 
-Let's Encrypt keeps working: Plesk's own `/.well-known/acme-challenge/` location is more specific
-than `location /`.
+Let's Encrypt keeps working: the catch-all leaves `/.well-known/acme-challenge/` to Plesk.
 
 Plesk regenerates a domain's configuration whenever you change its settings and keeps your additional
 directives; it never sees TeamCraft otherwise. After a playbook change of ports, host names or
@@ -179,7 +184,8 @@ sudo grep -c proxy_pass /var/www/vhosts/system/chat.example.com/conf/vhost_nginx
 
 | Symptom                                         | Cause                                                                   |
 |-------------------------------------------------|-------------------------------------------------------------------------|
-| `duplicate location "/"` when saving            | proxy mode still on (switch it off, Apply, then add the directives)     |
+| `duplicate location "/"` when saving            | directives from before this change (`location /`): paste the current file |
+| web client loads without scripts or styles     | *Serve static files directly by nginx* is on for the domain              |
 | the Plesk default page instead of TeamCraft     | directives not saved on this domain, or the wrong domain                |
 | calls ring but never connect                    | udp/4433 closed (Plesk firewall, hoster), or the SFU certificate failed |
 | SFU certificate copy fails after a renewal      | `journalctl -u teamcraft-sfu-cert.service`: the file it names, and why  |

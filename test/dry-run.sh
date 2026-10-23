@@ -114,6 +114,15 @@ proxy_prepare() {
 proxy_configure() {
   step "nginx: the playbook's configuration"
   docker exec "$target" sh -c 'cp /srv/teamcraft/reverse-proxy/nginx/teamcraft.conf /etc/nginx/conf.d/teamcraft.conf && nginx -t && systemctl reload nginx'
+  # The Plesk directives inside vhosts built the way Plesk builds them, on 127.0.0.1:8443: Plesk's own
+  # "location /" (proxy mode on; 418 here), its ACME location as a plain prefix and a regex of its own,
+  # then the additional directives. nginx -t must accept them (no duplicate "location /").
+  # shellcheck disable=SC2016 # expands inside the target, not here
+  docker exec "$target" sh -c '
+    for conf in /srv/teamcraft/reverse-proxy/plesk/*.conf; do
+      host=$(basename "$conf" .conf)
+      printf "server {\n    listen 127.0.0.1:8443 ssl;\n    server_name %s;\n    ssl_certificate /etc/ssl/teamcraft-test/fullchain.pem;\n    ssl_certificate_key /etc/ssl/teamcraft-test/privkey.pem;\n    location /.well-known/acme-challenge/ { return 200 \"plesk-acme\"; }\n    location ~ ^/(plesk-stat|webstat)/ { return 404; }\n    location / { return 418 \"plesk-apache\"; }\n    include %s;\n}\n" "$host" "$conf"
+    done > /etc/nginx/conf.d/plesk-mimic.conf && nginx -t && systemctl reload nginx'
 }
 
 up() {
@@ -260,6 +269,13 @@ verify() {
       cp /srv/teamcraft/reverse-proxy/apache/teamcraft.conf /etc/apache2/sites-available/teamcraft.conf
       a2ensite -q teamcraft >/dev/null && apache2ctl configtest'
     # shellcheck disable=SC2016 # expands inside the target, not here
+    # The Plesk directives (plesk/<host>.conf) next to Plesk's own "location /" (see proxy_configure).
+    local plesk="curl -sk -m 5 --resolve $domain:8443:127.0.0.1 --resolve $id_domain:8443:127.0.0.1"
+    check "Plesk directives: readyz past Plesk's location /" docker exec "$target" sh -c "$plesk -f https://$domain:8443/readyz"
+    check "Plesk directives: gateway WebSocket upgrade" docker exec "$target" sh -c "[ \$($plesk -o /dev/null -w '%{http_code}' --http1.1 -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' https://$domain:8443/api/v1/gateway) = 101 ]"
+    check "Plesk directives: internal API refused" docker exec "$target" sh -c "[ \$($plesk -o /dev/null -w '%{http_code}' -X POST https://$domain:8443/api/internal/v1/calls/participants/joined) = 404 ]"
+    check "Plesk directives: ACME challenges stay with Plesk" docker exec "$target" sh -c "$plesk https://$domain:8443/.well-known/acme-challenge/x | grep -qx plesk-acme && $plesk https://$id_domain:8443/.well-known/acme-challenge/x | grep -qx plesk-acme"
+    check "Plesk directives: Keycloak realm, admin console refused" docker exec "$target" sh -c "$plesk -f https://$id_domain:8443/realms/teamcraft/.well-known/openid-configuration >/dev/null && [ \$($plesk -o /dev/null -w '%{http_code}' https://$id_domain:8443/admin/master/console/) = 404 ]"
     check "HAProxy accepts the generated configuration" docker exec "$target" sh -c '
       printf "#!/bin/sh\nexit 101\n" > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
       (command -v haproxy >/dev/null || DEBIAN_FRONTEND=noninteractive apt-get install -y -qq haproxy >/dev/null)
