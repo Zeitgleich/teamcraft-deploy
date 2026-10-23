@@ -4,11 +4,13 @@ teamcraft_server_image: "{{ teamcraft_image_registry }}/teamcraft-server:{{ team
 teamcraft_server_memory: 1g
 teamcraft_server_log_filter: info
 
-# The web client: the release's teamcraft-web-<version>.tar.gz. Off until you point it at a
-# release that has it (docs/components/teamcraft-server.md); the apps work without it.
-teamcraft_server_web_enabled: false
+# The web client: the release's teamcraft-web-<version>.tar.gz, served by the server
+# (docs/components/teamcraft-server.md). false: apps only (desktop and mobile), no browser access.
+teamcraft_server_web_enabled: true
 teamcraft_server_web_url: "https://github.com/Zeitgleich/TeamCraft/releases/download/v{{ teamcraft_version }}/teamcraft-web-{{ teamcraft_version }}.tar.gz"
-# sha256:<hex> from the release's SHA256SUMS; empty skips the check.
+# The archive is checked against the release's SHA256SUMS (next to it), so a version bump needs nothing
+# else. A sha256:<hex> here wins over it (e.g. for an archive from somewhere else without SHA256SUMS).
+teamcraft_server_web_sums_url: "{{ teamcraft_server_web_url | dirname }}/SHA256SUMS"
 teamcraft_server_web_checksum: ""
 
 # Deprovisioning: poll the identity provider for disabled or deleted users (needs the server

@@ -8,6 +8,10 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- The web client's archive is checked against the release's `SHA256SUMS` by itself
+  (`teamcraft_server_web_sums_url`): a version bump no longer needs a new `teamcraft_server_web_checksum`,
+  which stays as an optional override.
+
 - Ubuntu 24.04 for the whole stack (Podman 4.9 from Ubuntu's archive; `crun` is installed with it, because
   Docker's `runc` can't start the read-only containers). Tested on an Ubuntu 24.04 VM laid out like a Plesk
   server, with nginx, Docker and its own PostgreSQL on 5432.
@@ -45,6 +49,9 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 - The gateway is a separate project with its own releases: `push_gateway_version` pins its image.
 
 ### Changed
+
+- **The web client is on by default** (`teamcraft_server_web_enabled: true`): releases ship
+  `teamcraft-web-<version>.tar.gz`. Set it to `false` for apps only.
 
 - The SFU's certificate copy also watches the certificate's directory: renewals that swap symlinks
   (certbot's and Plesk's `live/`) restart the SFU within seconds instead of within the hour.

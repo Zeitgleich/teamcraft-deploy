@@ -29,11 +29,50 @@
         group: tc-server
         mode: "0755"
 
+    # The checksum of the archive from the release's SHA256SUMS, unless teamcraft_server_web_checksum
+    # gives one. Fetched by the server itself, like the archive.
+    - name: Web client checksum list
+      ansible.builtin.uri:
+        url: "{{ teamcraft_server_web_sums_url }}"
+        return_content: true
+        # A release without the file fails below, with the reason.
+        status_code: [200, 404]
+      register: teamcraft_server_web_sums
+      when: teamcraft_server_web_checksum | length == 0
+
+    - name: Web client checksum
+      ansible.builtin.set_fact:
+        teamcraft_server_web_sha256: >-
+          {%- if teamcraft_server_web_checksum | length > 0 -%}
+          {{ teamcraft_server_web_checksum }}
+          {%- else -%}
+          {%- set name = teamcraft_server_web_url | basename -%}
+          {%- set ns = namespace(found='') -%}
+          {%- for line in (teamcraft_server_web_sums.content | default('')).splitlines() -%}
+          {%- set f = line.split() -%}
+          {%- if f | length == 2 and f[1].lstrip('*') == name and ns.found == '' -%}
+          {%- set ns.found = 'sha256:' ~ f[0] | lower -%}
+          {%- endif -%}
+          {%- endfor -%}
+          {{ ns.found }}
+          {%- endif -%}
+
+    - name: Web client checksum found
+      ansible.builtin.assert:
+        that: teamcraft_server_web_sha256 is match('^sha256:[0-9a-f]{64}$')
+        fail_msg: >-
+          {{ teamcraft_server_web_sums_url }} {{ 'does not exist' if teamcraft_server_web_sums.status == 404
+          else 'has no SHA-256 line for ' ~ (teamcraft_server_web_url | basename) }} (does release
+          {{ teamcraft_version }} ship a web client?). Set teamcraft_server_web_checksum, or
+          teamcraft_server_web_enabled: false for apps only.
+        quiet: true
+      when: teamcraft_server_web_checksum | length == 0
+
     - name: Web client archive
       ansible.builtin.get_url:
         url: "{{ teamcraft_server_web_url }}"
         dest: "/home/tc-server/teamcraft-web-{{ teamcraft_version }}.tar.gz"
-        checksum: "{{ teamcraft_server_web_checksum }}"
+        checksum: "{{ teamcraft_server_web_sha256 }}"
         owner: tc-server
         group: tc-server
         mode: "0644"
