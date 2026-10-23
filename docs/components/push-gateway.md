@@ -79,3 +79,8 @@ sudo -iu tc-gateway podman exec teamcraft-push-gateway /usr/local/bin/teamcraft-
 (`teamcraft-push-gateway keys list|rotate|prune`, see the gateway's operations.md); without them every sealed
 token stops opening and the apps register again, so back the volume up. Back up the volume `gateway-data` if you
 want the block list and quotas to survive a lost disk; the gateway works without it.
+
+**A backup of `gateway-data` is as sensitive as the APNs key and the FCM service account:** the token keys in it
+open every sealed device token of every server. Encrypt it, keep it off the hosts the TeamCraft servers run on,
+and limit who can read it; after a suspected leak, rotate the token keys (`keys rotate`, then `keys prune` once
+the apps have sealed again).
