@@ -4,15 +4,31 @@
 push_gateway_enabled: false
 # Public host name (A + AAAA records); Caddy obtains the certificate for it.
 push_gateway_hostname: ""
+# Let's Encrypt contact of the bundled Caddy (not needed behind your own proxy).
 push_gateway_admin_email: ""
+# Reverse proxy: the bundled Caddy (rootless as tc-gwproxy, ports 80/443), or false for a web server the
+# host already runs (Apache, nginx, Plesk): nothing then binds 80/443, the gateway listens on
+# push_gateway_upstream_address:push_gateway_port and configurations for your proxy are written to
+# push_gateway_proxy_snippets_dir (docs/components/push-gateway.md).
+push_gateway_caddy_enabled: true
+# Loopback address the gateway's API listens on and the proxy forwards to: 127.0.0.1 or ::1.
+push_gateway_upstream_address: 127.0.0.1
+push_gateway_upstream_host: >-
+  {{ ('[' ~ push_gateway_upstream_address ~ ']') if ':' in push_gateway_upstream_address else push_gateway_upstream_address }}
+push_gateway_proxy_snippets_dir: "{{ teamcraft_base_dir }}/reverse-proxy"
 # The gateway has its own repository and releases (github.com/Zeitgleich/teamcraft-push-gateway).
 push_gateway_version: "1.0.0"
 push_gateway_image: "ghcr.io/zeitgleich/teamcraft-push-gateway:{{ push_gateway_version }}"
 push_gateway_proxy_image: "docker.io/library/caddy:2.11.7"
 push_gateway_memory: 256m
 push_gateway_log_filter: info
-# acme: Let's Encrypt (ports 80/443 reachable). internal: Caddy's own CA (tests).
+# acme: Let's Encrypt (ports 80/443 reachable). internal: Caddy's own CA (tests). Only with Caddy.
 push_gateway_tls: acme
+# just self-check checks the public endpoint's certificate (off for test targets with a private CA).
+push_gateway_self_check_validate_certs: "{{ push_gateway_tls == 'acme' }}"
+# Checks before installing: 80/443 taken while Caddy is enabled, the gateway's ports taken by other
+# software, the playbook's firewall on a host whose firewall belongs to Plesk or Docker.
+push_gateway_preflight_enabled: true
 
 # open: any server registers its own key. closed: only keys added by hand
 # (`teamcraft-push-gateway servers allow <key>`, docs/components/push-gateway.md).
@@ -37,6 +53,11 @@ push_gateway_fcm_service_account: ""
 # Ports on the host, loopback only: the API behind Caddy, and health and metrics.
 push_gateway_port: 8090
 push_gateway_health_port: 8091
+
+# The services in start order (stop runs it backwards).
+push_gateway_services: >-
+  {{ [{'name': 'teamcraft-push-gateway', 'user': 'tc-gateway'}]
+     + ([{'name': 'push-gateway-caddy', 'user': 'tc-gwproxy'}] if push_gateway_caddy_enabled else []) }}
 
 # Podman secrets of the gateway (empty ones are left out).
 push_gateway_secrets:

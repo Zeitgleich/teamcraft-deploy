@@ -1,0 +1,5 @@
+# Managed by Ansible (teamcraft-deploy, role push_gateway): Plesk with Apache only (no nginx in front).
+# Websites & Domains > {{ push_gateway_hostname }} > Apache & nginx Settings > "Additional directives for
+# HTTPS": paste everything below. Needs the Apache modules proxy, proxy_http and headers (Tools & Settings >
+# Apache Web Server). docs/components/push-gateway.md
+{% include 'proxy/_apache.j2' %}

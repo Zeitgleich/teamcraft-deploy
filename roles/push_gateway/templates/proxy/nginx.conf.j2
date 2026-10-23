@@ -1,0 +1,12 @@
+# Managed by Ansible (teamcraft-deploy, role push_gateway): the gateway behind nginx.
+# /etc/nginx/conf.d/push-gateway.conf; nginx -t && systemctl reload nginx. Certificate: e.g. certbot.
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name {{ push_gateway_hostname }};
+    ssl_certificate /etc/letsencrypt/live/{{ push_gateway_hostname }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ push_gateway_hostname }}/privkey.pem;
+
+    {% filter indent(4) %}{% include 'proxy/_nginx.j2' %}{% endfilter %}
+
+}

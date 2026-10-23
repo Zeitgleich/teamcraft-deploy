@@ -4,9 +4,7 @@
 
 - name: Each service
   ansible.builtin.include_tasks: start_one.yml
-  loop:
-    - {name: teamcraft-push-gateway, user: tc-gateway}
-    - {name: push-gateway-caddy, user: tc-gwproxy}
+  loop: "{{ push_gateway_services }}"
   loop_control:
     loop_var: push_gateway_item
     label: "{{ push_gateway_item.name }}"

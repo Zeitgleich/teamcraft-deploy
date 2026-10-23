@@ -6,16 +6,16 @@ Description=TeamCraft push gateway (APNs and FCM)
 Image={{ push_gateway_image }}
 Pull=missing
 ContainerName=teamcraft-push-gateway
-# Host network inside tc-gateway's user namespace; loopback only (Caddy terminates TLS).
+# Host network inside tc-gateway's user namespace; loopback only (the reverse proxy terminates TLS).
 Network=host
 Volume=/home/tc-gateway/config/gateway.toml:/etc/teamcraft-push-gateway/gateway.toml:ro,Z
 # SQLite state (servers, block list, daily counters). Named volume: the container's root is tc-gateway.
 Volume=gateway-data:/var/lib/teamcraft-push-gateway
 Environment=TEAMCRAFT_PUSH_GATEWAY_CONFIG=/etc/teamcraft-push-gateway/gateway.toml
 # The image binds all addresses (for containers with their own network); this unit shares the host's,
-# so the variables are set to loopback here and Caddy is the only way in.
-Environment=TEAMCRAFT_PUSH_GATEWAY__SERVER__BIND=127.0.0.1:{{ push_gateway_port }}
-Environment=TEAMCRAFT_PUSH_GATEWAY__SERVER__HEALTH_BIND=127.0.0.1:{{ push_gateway_health_port }}
+# so the variables are set to loopback here and the reverse proxy is the only way in.
+Environment=TEAMCRAFT_PUSH_GATEWAY__SERVER__BIND={{ push_gateway_upstream_host }}:{{ push_gateway_port }}
+Environment=TEAMCRAFT_PUSH_GATEWAY__SERVER__HEALTH_BIND={{ push_gateway_upstream_host }}:{{ push_gateway_health_port }}
 {% if push_gateway_apns_key | length > 0 %}
 Secret=apns_key,type=env,target=TEAMCRAFT_PUSH_GATEWAY__APNS__KEY
 {% endif %}

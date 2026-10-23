@@ -1,0 +1,13 @@
+Managed by Ansible (teamcraft-deploy, role push_gateway).
+
+The push gateway runs here without its own Caddy (push_gateway_caddy_enabled: false). The web server
+already on this host forwards https://{{ push_gateway_hostname }} to http://{{ push_gateway_upstream_host }}:{{ push_gateway_port }}.
+
+  plesk-apache-https.conf  Plesk, Apache only: "Additional directives for HTTPS" of the domain
+  plesk-nginx.conf         Plesk, nginx in front: "Additional nginx directives" (Proxy mode off first)
+  apache.conf              plain Apache 2.4: a virtual host
+  nginx.conf               plain nginx: a server block
+
+The proxy must: terminate TLS for {{ push_gateway_hostname }}, pass Host unchanged, append the client's
+address to X-Forwarded-For, refuse /healthz and /metrics. Guide: docs/components/push-gateway.md in
+teamcraft-deploy.

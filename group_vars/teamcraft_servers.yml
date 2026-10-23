@@ -75,6 +75,9 @@ teamcraft_base_dir: /srv/teamcraft
 teamcraft_cert_dir: "{{ teamcraft_base_dir }}/certs"
 teamcraft_backup_dir: "{{ teamcraft_base_dir }}/backups"
 
+# Ports 80/443 for unprivileged users only for the bundled Caddy.
+base_unprivileged_web_ports: "{{ caddy_enabled }}"
+
 # Brands (docs/components/branding.md): several host names, each with its own name, logo, colors and
 # mail identity, all served by the one TeamCraft server. Empty: the single built-in brand on
 # teamcraft_domain. Brand data is your own: keep it in your inventory.

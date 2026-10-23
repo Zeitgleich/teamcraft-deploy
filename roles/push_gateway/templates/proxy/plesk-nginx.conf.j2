@@ -1,0 +1,4 @@
+# Managed by Ansible (teamcraft-deploy, role push_gateway): Plesk with nginx in front of Apache.
+# Websites & Domains > {{ push_gateway_hostname }} > Apache & nginx Settings: switch "Proxy mode" off and
+# Apply first, then paste everything below into "Additional nginx directives". docs/components/push-gateway.md
+{% include 'proxy/_nginx.j2' %}

@@ -1,6 +1,8 @@
 # Throwaway deployment target for test/dry-run.sh: a plain Debian trixie with systemd and SSH, as
-# a fresh VPS would be. The playbook installs everything else (podman, ...).
-FROM docker.io/library/debian:trixie
+# a fresh VPS would be. The playbook installs everything else (podman, ...). test/gateway-dry-run.sh
+# builds it on Ubuntu 24.04 (BASE_IMAGE).
+ARG BASE_IMAGE=docker.io/library/debian:trixie
+FROM ${BASE_IMAGE}
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends systemd systemd-sysv dbus openssh-server sudo python3 \

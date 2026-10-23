@@ -1,9 +1,10 @@
 # Managed by Ansible (teamcraft-deploy, role push_gateway). The APNs key and the FCM service account
 # come from podman secrets (TEAMCRAFT_PUSH_GATEWAY__APNS__KEY, ..__FCM__SERVICE_ACCOUNT).
 [server]
-bind = "127.0.0.1:{{ push_gateway_port }}"
-health_bind = "127.0.0.1:{{ push_gateway_health_port }}"
-# Caddy sets the client address; the last entry is the one it appended.
+bind = "{{ push_gateway_upstream_host }}:{{ push_gateway_port }}"
+health_bind = "{{ push_gateway_upstream_host }}:{{ push_gateway_health_port }}"
+# The reverse proxy (Caddy or yours) sets the client address; the last entry is the one it appended.
+# Only the proxy can reach the gateway, which listens on loopback.
 client_ip_header = "x-forwarded-for"
 
 [database]

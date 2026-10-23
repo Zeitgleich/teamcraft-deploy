@@ -1,0 +1,12 @@
+# test/gateway-dry-run.sh: the push gateway behind the Apache that already runs on the host (as on a
+# Plesk server without nginx). The script passes the image and throwaway credentials
+# (-e push_gateway_image=... -e @credentials.yml).
+push_gateway_enabled: true
+push_gateway_hostname: push-gw.172-31-251-10.sslip.io
+push_gateway_caddy_enabled: false
+# The host's firewall belongs to "Plesk" (the script fakes its marker file).
+base_firewall_enabled: false
+push_gateway_self_check_validate_certs: false
+push_gateway_apns_key_id: ABC123DEFG
+push_gateway_apns_team_id: DEF456GHIJ
+push_gateway_apns_bundle_id: com.example.teamcraft

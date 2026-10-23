@@ -1,0 +1,16 @@
+{# Apache directives inside the gateway's HTTPS virtual host (Plesk's "Additional directives for HTTPS", or apache.conf). #}
+{% set upstream = 'http://' ~ push_gateway_upstream_host ~ ':' ~ push_gateway_port %}
+ProxyRequests Off
+# Host unchanged; mod_proxy appends the client's address to X-Forwarded-For (the gateway takes the last
+# entry for its registration limits).
+ProxyPreserveHost On
+RequestHeader set X-Forwarded-Proto "https"
+# Let's Encrypt renewals of this host name stay with the web server.
+ProxyPass /.well-known/acme-challenge/ !
+# Health and metrics belong to the operator's network, not the internet.
+ProxyPass /healthz !
+ProxyPass /metrics !
+RedirectMatch 404 ^/(healthz|metrics)$
+# Pushes wait for APNs / FCM: a few seconds, rarely more.
+ProxyPass / {{ upstream }}/ timeout=60
+ProxyPassReverse / {{ upstream }}/

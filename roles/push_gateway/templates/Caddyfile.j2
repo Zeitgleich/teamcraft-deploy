@@ -14,5 +14,5 @@
 	# Health and metrics belong to the operator's network, not the internet.
 	respond /healthz 404
 	respond /metrics 404
-	reverse_proxy 127.0.0.1:{{ push_gateway_port }}
+	reverse_proxy {{ push_gateway_upstream_host }}:{{ push_gateway_port }}
 }

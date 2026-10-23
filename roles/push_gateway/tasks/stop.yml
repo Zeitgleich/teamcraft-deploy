@@ -12,8 +12,6 @@
   environment:
     XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[item.user][1] }}"
     DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd[item.user][1] }}/bus"
-  loop:
-    - {name: push-gateway-caddy, user: tc-gwproxy}
-    - {name: teamcraft-push-gateway, user: tc-gateway}
+  loop: "{{ push_gateway_services | reverse | list }}"
   loop_control:
     label: "{{ item.name }}"
