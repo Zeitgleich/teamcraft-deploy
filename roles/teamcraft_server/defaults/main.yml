@@ -41,6 +41,10 @@ teamcraft_server_branding_max_asset_bytes: 524288
 # other secrets. Set it empty for no gateway, e.g. with self-built apps that use your own credentials
 # (teamcraft_server_extra_config with [push.apns] / [push.fcm]).
 teamcraft_push_gateway_url: https://push-gw.zeitgleich.de
+# The apps seal their device token for the gateway, bound to this server (docs/components/push-gateway.md).
+# true: also accept raw tokens from old apps that don't seal yet (a transition; the gateway must allow it
+# too, and a raw token can be used by any server that learns it).
+teamcraft_push_gateway_accept_unbound_tokens: false
 
 # Anything else from teamcraft.example.toml, merged into the generated file as TOML sections, e.g.
 #   teamcraft_server_extra_config: |

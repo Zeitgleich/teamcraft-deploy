@@ -54,18 +54,19 @@ rootless containers: the gateway as `tc-gateway` (loopback only, SQLite state in
 (no SFU port). Health and metrics (`127.0.0.1:8091`) are not public: scrape them over a tunnel or add
 a Prometheus agent on the host.
 
-| Setting                            | Default                                               | Meaning                                                                 |
-|------------------------------------|-------------------------------------------------------|-------------------------------------------------------------------------|
-| `push_gateway_enabled`             | `false`                                               | install the gateway on this host                                        |
-| `push_gateway_hostname`            | empty (required)                                      | public host name                                                        |
-| `push_gateway_admin_email`         | empty (required)                                      | Let's Encrypt contact                                                   |
-| `push_gateway_apns_*`              | empty                                                 | `key` (the `.p8` text), `key_id`, `team_id`, `bundle_id`, `use_sandbox` |
-| `push_gateway_fcm_service_account` | empty                                                 | the Firebase service account JSON (at least one provider is needed)     |
-| `push_gateway_registration_mode`   | `open`                                                | `closed`: only keys added with `servers allow`                          |
-| `push_gateway_limits`              | `{}`                                                  | overrides of `[limits]`, e.g. `{pushes_per_day: 50000}`                 |
-| `push_gateway_version`             | `1.0.0`                                               | release of the gateway (its own project)                                |
-| `push_gateway_image`               | `ghcr.io/zeitgleich/teamcraft-push-gateway:<version>` | or pin `…@sha256:<digest>`                                              |
-| `push_gateway_tls`                 | `acme`                                                | `internal`: Caddy's own CA (tests)                                      |
+| Setting                              | Default                                               | Meaning                                                                 |
+|--------------------------------------|-------------------------------------------------------|-------------------------------------------------------------------------|
+| `push_gateway_enabled`               | `false`                                               | install the gateway on this host                                        |
+| `push_gateway_hostname`              | empty (required)                                      | public host name                                                        |
+| `push_gateway_admin_email`           | empty (required)                                      | Let's Encrypt contact                                                   |
+| `push_gateway_apns_*`                | empty                                                 | `key` (the `.p8` text), `key_id`, `team_id`, `bundle_id`, `use_sandbox` |
+| `push_gateway_fcm_service_account`   | empty                                                 | the Firebase service account JSON (at least one provider is needed)     |
+| `push_gateway_registration_mode`     | `open`                                                | `closed`: only keys added with `servers allow`                          |
+| `push_gateway_accept_unbound_tokens` | `false`                                               | also accept raw device tokens (transition only)                         |
+| `push_gateway_limits`                | `{}`                                                  | overrides of `[limits]`, e.g. `{pushes_per_day: 50000}`                 |
+| `push_gateway_version`               | `1.0.0`                                               | release of the gateway (its own project)                                |
+| `push_gateway_image`                 | `ghcr.io/zeitgleich/teamcraft-push-gateway:<version>` | or pin `…@sha256:<digest>`                                              |
+| `push_gateway_tls`                   | `acme`                                                | `internal`: Caddy's own CA (tests)                                      |
 
 Operating it (block list, limits, metrics): run the CLI inside the container, e.g.
 
@@ -74,5 +75,12 @@ sudo -iu tc-gateway podman exec teamcraft-push-gateway /usr/local/bin/teamcraft-
 sudo -iu tc-gateway podman exec teamcraft-push-gateway /usr/local/bin/teamcraft-push-gateway servers block <server-id> <reason>
 ```
 
-(`sudo -iu` needs `XDG_RUNTIME_DIR=/run/user/$(id -u tc-gateway)`.) Back up the volume `gateway-data` if you
+(`sudo -iu` needs `XDG_RUNTIME_DIR=/run/user/$(id -u tc-gateway)`.) The volume also holds the **token keys** the apps seal their device tokens to
+(`teamcraft-push-gateway keys list|rotate|prune`, see the gateway's operations.md); without them every sealed
+token stops opening and the apps register again, so back the volume up. Back up the volume `gateway-data` if you
 want the block list and quotas to survive a lost disk; the gateway works without it.
+
+**A backup of `gateway-data` is as sensitive as the APNs key and the FCM service account:** the token keys in it
+open every sealed device token of every server. Encrypt it, keep it off the hosts the TeamCraft servers run on,
+and limit who can read it; after a suspected leak, rotate the token keys (`keys rotate`, then `keys prune` once
+the apps have sealed again).

@@ -8,6 +8,9 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Device tokens are bound to servers: the apps seal them for the push gateway, so the server never holds
+  a usable token. `teamcraft_push_gateway_accept_unbound_tokens` / `push_gateway_accept_unbound_tokens`
+  (both off) keep old apps working during a transition; the gateway's token keys are in its volume.
 - Push gateway for the store apps: `teamcraft_push_gateway_url` points the server at the publisher's
   gateway (default `https://push-gw.zeitgleich.de`) (generated secret `push_gateway_key`), and the optional role `push_gateway` runs a gateway on
   its own host (inventory group `teamcraft_push_gateways`, off by default). See

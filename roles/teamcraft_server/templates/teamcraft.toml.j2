@@ -132,6 +132,7 @@ vapid_subject = "mailto:{{ teamcraft_admin_email }}"
 # podman secret push_gateway_key (TEAMCRAFT_PUSH__GATEWAY__KEY).
 [push.gateway]
 url = "{{ teamcraft_push_gateway_url }}"
+accept_unbound_tokens = {{ teamcraft_push_gateway_accept_unbound_tokens | bool | lower }}
 {% endif %}
 {% if teamcraft_server_extra_config | length > 0 %}
 

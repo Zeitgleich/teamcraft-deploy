@@ -11,6 +11,10 @@ path = "/var/lib/teamcraft-push-gateway/gateway.db"
 
 [registration]
 mode = "{{ push_gateway_registration_mode }}"
+
+# The token keys live next to the database, in the gateway-data volume (the image sets tokens.dir).
+[tokens]
+accept_unbound = {{ push_gateway_accept_unbound_tokens | bool | lower }}
 {% if push_gateway_limits | length > 0 %}
 
 [limits]
