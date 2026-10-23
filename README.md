@@ -5,7 +5,7 @@ end-to-end encrypted team chat with calls and meetings – on your own Debian se
 runs as a rootless Podman container under its own unprivileged user, managed by systemd through
 Quadlet. IPv4 and IPv6 throughout.
 
-You need a Debian 13 server, a domain name and about 15 minutes.
+You need a Debian 13 or Ubuntu 24.04 server, a domain name and about 15 minutes.
 
 ```sh
 git clone https://github.com/Zeitgleich/teamcraft-deploy.git && cd teamcraft-deploy

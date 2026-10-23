@@ -84,10 +84,10 @@
 - name: Only cgroup v2 (for Podman 4 on Ubuntu)
   ansible.builtin.assert:
     that: >-
-      push_gateway_preflight_cgroup.content | b64decode | trim | split('\n') | reject('match', '^0::') | list | length == 0
+      (push_gateway_preflight_cgroup.content | b64decode).splitlines() | reject('match', '^0::') | list | length == 0
     fail_msg: >-
-      This host mounts a cgroup v1 hierarchy next to v2 ({{ push_gateway_preflight_cgroup.content | b64decode | trim
-      | split('\n') | reject('match', '^0::') | join(', ') }}), which Podman 4 can't run systemd services under:
+      This host mounts a cgroup v1 hierarchy next to v2 ({{ (push_gateway_preflight_cgroup.content | b64decode).splitlines()
+      | reject('match', '^0::') | join(', ') }}), which Podman 4 can't run systemd services under:
       unmount it (see `mount -t cgroup`) or use Debian 13 (Podman 5).
     quiet: true
   when: ansible_facts['distribution'] == 'Ubuntu'

@@ -161,7 +161,9 @@ verify() {
   # shellcheck disable=SC2016 # expands inside the target, not here
   check "unprivileged users can't bind web ports" docker exec "$target" sh -c '[ "$(sysctl -n net.ipv4.ip_unprivileged_port_start)" = 1024 ]'
   # shellcheck disable=SC2016 # expands inside the target, not here
-  check "firewall left alone" docker exec "$target" sh -c '! [ -e /etc/nftables.conf ] && ! nft list ruleset 2>/dev/null | grep -q "table inet filter"'
+  # Ubuntu's podman pulls in the nftables package with its own (inactive) /etc/nftables.conf: what counts is
+  # that the playbook wrote no ruleset and started no firewall.
+  check "firewall left alone" docker exec "$target" sh -c '! grep -qs teamcraft-deploy /etc/nftables.conf && ! systemctl is-active -q nftables'
   check "client address from X-Forwarded-For (gateway config)" docker exec "$target" grep -q 'client_ip_header = "x-forwarded-for"' /home/tc-gateway/config/gateway.toml
   check "podman from Ubuntu's archive" docker exec "$target" sh -c 'podman --version && dpkg -s podman | grep -q "^Version: 4\."'
   step "Stop and start"

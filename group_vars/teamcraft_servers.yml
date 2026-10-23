@@ -86,7 +86,7 @@ teamcraft_caldav_password: "{{ base_secrets.calcraft_password if calcraft_enable
 
 # Ports on the host. Only Caddy (80, 443) and the SFU are public; everything else is loopback. Change
 # any that other software on the host already uses (the preflight checks say which).
-teamcraft_ports:
+teamcraft_port_defaults:
   postgres: 5432
   server: 8080
   sfu: 4433
@@ -97,6 +97,9 @@ teamcraft_ports:
   garage_rpc: 3901
   garage_admin: 3903
   calcraft: 5232
+# Set only the ones you change, e.g. teamcraft_ports: {postgres: 13100, server: 13101}: the base role
+# fills in the rest from teamcraft_port_defaults.
+teamcraft_ports: "{{ teamcraft_port_defaults }}"
 
 # Services in start order (stop runs it backwards): unit, user, whether it is enabled.
 teamcraft_services:

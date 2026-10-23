@@ -13,7 +13,6 @@ Network=host
 # it via group tc-certs.
 Volume={{ teamcraft_cert_dir }}:/certs:ro
 Volume=/home/tc-sfu/config/call-signing.pub.pem:/etc/teamcraft/call-signing.pub.pem:ro,Z
-GroupAdd=keep-groups
 Secret=sfu_registration_token,type=env,target=TEAMCRAFT_SFU_REGISTRATION_TOKEN
 # Dual-stack socket: [::] with IPV6_V6ONLY off accepts IPv4 (mapped) and IPv6.
 Environment=TEAMCRAFT_SFU_BIND=[::]:{{ teamcraft_ports.sfu }}
@@ -36,7 +35,9 @@ RunInit=yes
 # Exec form (JSON): the distroless image has no shell for the string form.
 HealthCmd=["/usr/local/bin/teamcraft-sfu", "healthcheck"]
 HealthInterval=30s
-PodmanArgs=--memory={{ teamcraft_sfu_memory }}
+# keep-groups: tc-sfu's group tc-certs reaches the container (the certificate). As an argument, not
+# GroupAdd=: Quadlet only knows that key from Podman 5 on (Ubuntu 24.04 has 4.9).
+PodmanArgs=--memory={{ teamcraft_sfu_memory }} --group-add=keep-groups
 LogDriver=journald
 
 [Service]

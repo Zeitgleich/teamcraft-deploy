@@ -4,24 +4,34 @@ Plesk runs nginx on 80/443 (with Apache behind it for PHP sites). TeamCraft goes
 rootless Podman containers on loopback, one Plesk domain per TeamCraft host name whose nginx forwards
 to them. General part: [../reverse-proxy.md](../reverse-proxy.md).
 
-Not tested against a real Plesk here: the nginx directives are the ones the dry run tests with plain
-nginx, and the SFU certificate is read the way Plesk stores it (the dry run imitates that). Check each
-step on your server; the [checks](../reverse-proxy.md#checking-it) at the end tell you whether it works.
+Tested on an Ubuntu 24.04 VM laid out like a Plesk server: Plesk's nginx vhost structure with these
+directives in `vhost_nginx.conf`, certificates in the Let's Encrypt extension's `live/` directories,
+Docker with containers, a foreign PostgreSQL on 5432, port 8090 taken. That covered sign-in, the
+gateway WebSocket, S3, the SFU over QUIC and a renewal of its certificate. Not tested against a real
+Plesk panel: check each step on your server; the [checks](../reverse-proxy.md#checking-it) at the end
+tell you whether it works.
 
 ## Before you start
 
-- **Debian 13** is what the playbook supports; Plesk supports Debian 13 from Plesk Obsidian 18.0.74.
-  A Plesk on Debian 12 needs the OS upgraded first (follow Plesk's instructions for that).
+- **Debian 13 or Ubuntu 24.04**: Plesk supports Debian 13 from Plesk Obsidian 18.0.74 and Ubuntu 24.04
+  as well. On Ubuntu the playbook installs Podman 4.9 from Ubuntu's archive and `crun` with it (Docker's
+  `runc` can't start TeamCraft's read-only containers). The host must have only cgroup v2: `cat
+  /proc/self/cgroup` shows a single line starting with `0::` (the preflight check stops otherwise).
 - **Podman next to Plesk's Docker extension** is fine: the playbook installs Podman and runs every
   container rootless under its own user (`tc-server`, `tc-db`, ...); nothing goes through Docker's
   daemon, Plesk's Docker page won't list them, and they don't touch Docker's networks or iptables
   rules. Don't use Plesk's "Docker Proxy Rules" for TeamCraft (they add a `location ~ ^/.*` that
   doesn't upgrade WebSockets); the directives below replace them.
 - **Ports**: Plesk uses 8443 and 8880 (panel), 7080/7081 (Apache behind nginx), 3306 (MariaDB) and,
-  if installed, 5432 (PostgreSQL). TeamCraft's defaults (8080, 8081, 8180, 9180, 3900–3903, 5232, 5432)
-  are on loopback; the preflight check stops the run if one is taken, then move it:
-  `teamcraft_ports: {postgres: 15432, server: 8080, ...}` (the whole dictionary,
-  `group_vars/teamcraft_servers.yml` has it).
+  if installed, 5432 (PostgreSQL); Docker containers publish their own. TeamCraft's defaults (8080,
+  8081, 8180, 9180, 3900–3903, 5232, 5432) are on loopback; the preflight check stops the run if one is
+  taken. Move only those, the rest keep their defaults:
+
+  ```yaml
+  teamcraft_ports: {postgres: 13100, server: 13101, sfu: 4433, sfu_control: 13102}
+  ```
+
+  TeamCraft's PostgreSQL is its own (rootless, on its own port); an existing PostgreSQL stays untouched.
 - **Mail**: Plesk's own mail server can relay TeamCraft's invitations ([../components/mail.md](../components/mail.md)).
 
 ## 1. Domains and certificates in Plesk
@@ -43,12 +53,20 @@ The SFU's domain needs nothing else: it exists only so Plesk gets and renews its
 ```yaml
 # inventory/host_vars/chat.example.com/vars.yml
 caddy_enabled: false
-# Plesk manages the firewall (the preflight check insists).
+# Plesk manages the firewall (the preflight check insists, also when Docker runs).
 base_firewall_enabled: false
-# The SFU's certificate: Plesk stores certificates under random names that change with every renewal
-# (/usr/local/psa/var/certificates/cert-XXXXXXX, key and certificate in one file); the domain's
-# generated nginx configuration names the current one.
-teamcraft_sfu_certificate_nginx_conf: /var/www/vhosts/system/sfu.chat.example.com/conf/last_nginx.conf
+# The SFU's certificate, from the Let's Encrypt extension's live directory (symlinks to the current
+# files, swapped on every renewal):
+teamcraft_sfu_certificate_path: /usr/local/psa/var/modules/letsencrypt/etc/live/sfu.chat.example.com/fullchain.pem
+teamcraft_sfu_certificate_key_path: /usr/local/psa/var/modules/letsencrypt/etc/live/sfu.chat.example.com/privkey.pem
+# If that directory doesn't exist on your Plesk (it depends on the extension's version), take the
+# certificate Plesk's nginx uses instead: its files have random names that change with every renewal
+# (/usr/local/psa/var/certificates/cert-XXXXXXX, key and chain in one), so name the configuration:
+# teamcraft_sfu_certificate_nginx_conf: /var/www/vhosts/system/sfu.chat.example.com/conf/last_nginx.conf
+```
+
+```sh
+sudo ls -l /usr/local/psa/var/modules/letsencrypt/etc/live/sfu.chat.example.com/   # which one you have
 ```
 
 ```sh
@@ -56,7 +74,8 @@ just setup-all
 ```
 
 The playbook installs everything, copies the SFU's certificate (and keeps copying it when Plesk renews
-it: `teamcraft-sfu-cert.path` watches that file, `teamcraft-sfu-cert.timer` checks hourly) and writes
+it: `teamcraft-sfu-cert.path` watches the files and their directory, so a swapped symlink in `live/`
+counts too; `teamcraft-sfu-cert.timer` checks hourly) and writes
 one directives file per domain to `/srv/teamcraft/reverse-proxy/plesk/`.
 
 Check that the SFU found its certificate:
@@ -65,10 +84,9 @@ Check that the SFU found its certificate:
 sudo journalctl -u teamcraft-sfu-cert.service -n 3   # "copied the certificate for sfu.chat.example.com from ..."
 ```
 
-`/var/www/vhosts/system/<domain>/conf/last_nginx.conf` is where Plesk keeps the domain's current nginx
-configuration on Linux (`grep ssl_certificate` in it shows the file). If your Plesk keeps it elsewhere,
-point `teamcraft_sfu_certificate_nginx_conf` there, or name the file directly with
-`teamcraft_sfu_certificate_path` (then renewals need a playbook run).
+With `teamcraft_sfu_certificate_nginx_conf`: `/var/www/vhosts/system/<domain>/conf/last_nginx.conf` is
+where Plesk keeps the domain's current nginx configuration on Linux (`grep ssl_certificate` in it shows
+the file). If your Plesk keeps it elsewhere, point the setting there.
 
 ## 3. nginx directives per domain
 

@@ -71,6 +71,15 @@
         group: tc-certs
         mode: "0750"
 
+    # Debian has it, Ubuntu not.
+    - name: Script directory
+      ansible.builtin.file:
+        path: /usr/local/libexec
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
     - name: Certificate copy script
       ansible.builtin.template:
         src: sfu-cert-copy.sh.j2

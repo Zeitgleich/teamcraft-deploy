@@ -5,7 +5,8 @@ the proxy you run, filled in with this host's names and ports. Pick the one for 
 where your proxy reads its configuration, check and reload. The guide: docs/reverse-proxy.md in
 teamcraft-deploy.
 
-  nginx/teamcraft.conf     nginx (also behind other panels that let you add server blocks)
+  nginx/teamcraft.conf         nginx 1.25.1 or newer: HTTP/2 and HTTP/3 (also behind panels that take server blocks)
+  nginx/teamcraft-legacy.conf  nginx before 1.25.1 (Ubuntu 24.04: 1.24): HTTP/2 only
   plesk/<host>.conf        Plesk: "Additional nginx directives" of each domain
   apache/teamcraft.conf    Apache 2.4.47+
   haproxy/teamcraft.cfg    HAProxy 2.6+

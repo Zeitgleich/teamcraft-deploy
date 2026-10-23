@@ -1,10 +1,22 @@
 {% import 'nginx-locations.j2' as nginx with context %}
+{% set legacy = proxy_snippets_nginx_legacy | default(false) %}
 # Managed by Ansible (teamcraft-deploy, role proxy_snippets): TeamCraft behind nginx
 # (docs/proxies/nginx.md). Copy it to /etc/nginx/conf.d/teamcraft.conf, then: nginx -t && systemctl reload nginx
+{% if legacy %}
+#
+# For nginx before 1.25.1 (Ubuntu 24.04: 1.24): HTTP/2 via "listen ... ssl http2", no HTTP/3. With nginx
+# 1.25.1 or newer use teamcraft.conf next to this file (HTTP/2 and HTTP/3).
+{% else %}
+#
+# For nginx 1.25.1 or newer (Debian 13: 1.26; nginx.org packages) built with the HTTP/3 module (nginx -V
+# shows --with-http_v3_module): HTTP/2 and HTTP/3. HTTP/3 needs udp/443 open in the firewall. Older nginx
+# (Ubuntu 24.04: 1.24): teamcraft-legacy.conf next to this file.
+# "reuseport" may appear once per address in all of nginx's configuration: if another site already has
+# "listen 443 quic reuseport", remove it here.
+{% endif %}
 #
 # Certificates per host name (teamcraft_proxy_certificate_path / _key_path), e.g. from certbot with the
 # webroot below: certbot certonly --webroot -w /var/www/letsencrypt -d <host> (once per name).
-# nginx >= 1.25.1 for "http2 on"; with an older one write "listen 443 ssl http2;" instead.
 
 # Port 80: ACME challenges, everything else to HTTPS.
 server {
@@ -32,14 +44,24 @@ server {
 # CalCraft (CalDAV).
 {% endif %}
 server {
+{% if legacy %}
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+{% else %}
     listen 443 ssl;
     listen [::]:443 ssl;
+    listen 443 quic{{ ' reuseport' if loop.first else '' }};
+    listen [::]:443 quic{{ ' reuseport' if loop.first else '' }};
     http2 on;
+    http3 on;
+    # Tells browsers HTTP/3 is there (locations with their own add_header repeat it).
+    add_header Alt-Svc 'h3=":443"; ma=86400' always;
+{% endif %}
     server_name {{ host }};
     ssl_certificate {{ teamcraft_proxy_certificate_path | replace('{host}', host) }};
     ssl_certificate_key {{ teamcraft_proxy_certificate_key_path | replace('{host}', host) }};
 
-{{ nginx.locations(kind, host, port) }}}
+{{ nginx.locations(kind, host, port, alt_svc=not legacy) }}}
 {% endfor %}
 {% if teamcraft_sfu_enabled %}
 
