@@ -17,6 +17,9 @@ push_gateway_tls: acme
 # open: any server registers its own key. closed: only keys added by hand
 # (`teamcraft-push-gateway servers allow <key>`, docs/components/push-gateway.md).
 push_gateway_registration_mode: open
+# Apps seal their device token for the gateway, bound to one server. true: also accept raw tokens (a
+# transition for servers and apps that don't seal yet; off by default).
+push_gateway_accept_unbound_tokens: false
 # Limits of every server, merged over the gateway's defaults (names: [limits] in
 # teamcraft-push-gateway.example.toml), e.g. {pushes_per_day: 50000}.
 push_gateway_limits: {}
