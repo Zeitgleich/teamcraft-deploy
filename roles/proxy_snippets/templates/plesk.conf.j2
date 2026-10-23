@@ -1,7 +1,9 @@
 {% import 'nginx-locations.j2' as nginx with context %}
 # Managed by Ansible (teamcraft-deploy, role proxy_snippets): Plesk, {{ proxy_site[1] }}
 # (docs/proxies/plesk.md). Paste everything below into Websites & Domains > {{ proxy_site[1] }} >
-# Apache & nginx Settings > "Additional nginx directives", with "Proxy mode" switched off (and applied)
-# first. Plesk adds listen, server_name and the certificate itself.
+# Apache & nginx Settings > "Additional nginx directives". Works with "Proxy mode" on or off: the
+# catch-all is a regex location, which wins over Plesk's own "location /". Turn off "Serve static files
+# directly by nginx" for this domain (its regex for .js, .css, .png, ... comes first and would serve them
+# from the document root). Plesk adds listen, server_name and the certificate itself.
 
-{{ nginx.locations(proxy_site[0], proxy_site[1], proxy_site[2], '') }}
+{{ nginx.locations(proxy_site[0], proxy_site[1], proxy_site[2], '', plesk=true) }}

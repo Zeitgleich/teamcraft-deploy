@@ -180,9 +180,9 @@ host on Ubuntu 24.04, the way Plesk includes it.
 
 The domain → *Apache & nginx Settings*:
 
-1. Switch **Proxy mode** off and *Apply*. This has to be a save of its own: with proxy mode on, Plesk
-   refuses a second `location /` (`duplicate location "/"`).
-2. Paste `plesk-nginx.conf` into **Additional nginx directives**.
+Paste `plesk-nginx.conf` into **Additional nginx directives**. *Proxy mode* can stay on or off: the
+catch-all is a regex location (`~ ^/(?![.]well-known/acme-challenge/)`), which wins over Plesk's own
+`location /`, so Plesk doesn't refuse it as a duplicate, and it leaves the ACME challenges to Plesk.
 
 The Apache directives above are then not needed.
 
@@ -193,7 +193,7 @@ location = /healthz {
 location = /metrics {
     return 404;
 }
-location / {
+location ~ ^/(?![.]well-known/acme-challenge/) {
     proxy_pass http://127.0.0.1:8090;
     proxy_http_version 1.1;
     proxy_set_header Connection "";

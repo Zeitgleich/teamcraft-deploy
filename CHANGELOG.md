@@ -56,6 +56,10 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The Plesk nginx directives (`plesk/<domain>.conf`, the gateway's `plesk-nginx.conf`) used `location /`,
+  which Plesk's own vhost already has: `duplicate location "/"`. The catch-all is a regex location now
+  (`~ ^/(?![.]well-known/acme-challenge/)`), which works with proxy mode on or off and leaves Let's
+  Encrypt challenges to Plesk.
 - A PostgreSQL port other than 5432 (`teamcraft_ports.postgres`): creating the databases, backups and
   restores used the default socket; the container now sets `PGPORT`.
 - The SFU's Quadlet unit used `GroupAdd=`, which Podman 4.9 (Ubuntu 24.04) doesn't know; it's a

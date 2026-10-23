@@ -7,7 +7,7 @@ location = /healthz {
 location = /metrics {
     return 404;
 }
-location / {
+location {{ '~ ^/(?![.]well-known/acme-challenge/)' if push_gateway_proxy_plesk | default(false) else '/' }} {
     proxy_pass {{ upstream }};
     proxy_http_version 1.1;
     proxy_set_header Connection "";
