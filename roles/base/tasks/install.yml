@@ -5,11 +5,12 @@
     update_cache: true
     cache_valid_time: 3600
 
-# Rootless containers can't bind below 1024; Caddy needs 80/443 (covers IPv6 too).
+# Rootless containers can't bind below 1024; Caddy needs 80/443 (covers IPv6 too). Without a bundled
+# Caddy the kernel's default (1024) stays: on a shared host no other user should bind web ports.
 - name: Unprivileged ports from 80
   ansible.posix.sysctl:
     name: net.ipv4.ip_unprivileged_port_start
-    value: "80"
+    value: "{{ '80' if base_unprivileged_web_ports else '1024' }}"
     sysctl_file: /etc/sysctl.d/60-teamcraft.conf
 
 - name: Group that may read the SFU certificate

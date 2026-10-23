@@ -1,0 +1,12 @@
+# Managed by Ansible (teamcraft-deploy, role push_gateway): the gateway behind Apache 2.4.
+# /etc/apache2/sites-available/push-gateway.conf; a2enmod ssl proxy proxy_http headers;
+# a2ensite push-gateway; apachectl configtest && systemctl reload apache2. Certificate: e.g. certbot.
+<VirtualHost *:443>
+    ServerName {{ push_gateway_hostname }}
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/{{ push_gateway_hostname }}/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/{{ push_gateway_hostname }}/privkey.pem
+
+    {% filter indent(4) %}{% include 'proxy/_apache.j2' %}{% endfilter %}
+
+</VirtualHost>

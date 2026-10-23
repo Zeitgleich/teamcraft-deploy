@@ -1,7 +1,7 @@
 # Shared base of every TeamCraft host: packages for rootless podman + Quadlet, the shared groups and
 # directories, the firewall and the secrets.
 
-# Packages: podman >= 4.4 for Quadlet (Debian 13 ships 5.x).
+# Packages: podman >= 4.4 for Quadlet (Debian 13 ships 5.x, Ubuntu 24.04 4.9; the same package names).
 base_packages:
   - podman
   - catatonit
@@ -13,6 +13,9 @@ base_packages:
   - curl
   # brand images (ansible.posix.synchronize)
   - rsync
+
+# Whether rootless users may bind ports from 80 (a bundled Caddy on 80/443). Set per host group.
+base_unprivileged_web_ports: true
 
 # Firewall (nftables, IPv4 and IPv6): replaces the host's ruleset with one that allows SSH, 80/443
 # (tcp, and udp for HTTP/3) and the SFU's UDP port, plus base_firewall_extra_ports. Disable it to

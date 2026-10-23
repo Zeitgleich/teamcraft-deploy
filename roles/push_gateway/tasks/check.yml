@@ -9,21 +9,19 @@
   become_user: "{{ item.user }}"
   environment:
     XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd[item.user][1] }}"
-  loop:
-    - {name: teamcraft-push-gateway, user: tc-gateway}
-    - {name: push-gateway-caddy, user: tc-gwproxy}
+  loop: "{{ push_gateway_services }}"
   loop_control:
     label: "{{ item.name }}"
   changed_when: false
 
 - name: Health answers on loopback
   ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ push_gateway_health_port }}/healthz"
+    url: "http://{{ push_gateway_upstream_host }}:{{ push_gateway_health_port }}/healthz"
 
 - name: Public info document, from the control machine
   ansible.builtin.uri:
-    url: "https://{{ push_gateway_hostname }}/api/v1/info"
-    validate_certs: "{{ push_gateway_tls == 'acme' }}"
+    url: "https://{{ push_gateway_hostname }}/v1/info"
+    validate_certs: "{{ push_gateway_self_check_validate_certs }}"
     return_content: true
   delegate_to: localhost
   become: false
@@ -34,7 +32,7 @@
   ansible.builtin.uri:
     url: "https://{{ push_gateway_hostname }}{{ item }}"
     status_code: 404
-    validate_certs: "{{ push_gateway_tls == 'acme' }}"
+    validate_certs: "{{ push_gateway_self_check_validate_certs }}"
   delegate_to: localhost
   become: false
   loop: [/healthz, /metrics]

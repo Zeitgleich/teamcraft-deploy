@@ -1,0 +1,20 @@
+{# nginx locations inside the gateway's HTTPS server block (Plesk's "Additional nginx directives", or nginx.conf). #}
+{% set upstream = 'http://' ~ push_gateway_upstream_host ~ ':' ~ push_gateway_port %}
+# Health and metrics belong to the operator's network, not the internet.
+location = /healthz {
+    return 404;
+}
+location = /metrics {
+    return 404;
+}
+location / {
+    proxy_pass {{ upstream }};
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    # Host unchanged; the client's address for the gateway's registration limits.
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    # Pushes wait for APNs / FCM: a few seconds, rarely more.
+    proxy_read_timeout 60s;
+}

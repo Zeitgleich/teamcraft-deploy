@@ -1,0 +1,93 @@
+# Before installing: room for the gateway on this host? Other software on 80/443 while the bundled Caddy
+# is enabled, or on the gateway's ports; a firewall that belongs to Plesk or Docker, which the playbook's
+# own (base_firewall_enabled: it replaces the whole ruleset) would wipe. push_gateway_preflight_enabled:
+# false skips it.
+- name: Listening sockets and the user that owns each (rootless services count as their user)
+  ansible.builtin.shell: |
+    set -o pipefail
+    ss -Htulnp | while read -r proto state recvq sendq local peer procs; do
+      port=${local##*:}
+      pid=$(printf '%s\n' "$procs" | sed -n 's/.*pid=\([0-9]*\).*/\1/p')
+      uid=- comm=-
+      if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then
+        uid=$(sed -n 's/.*user@\([0-9]*\)\.service.*/\1/p' "/proc/$pid/cgroup" | head -n 1)
+        [ -n "$uid" ] || uid=$(stat -c %u "/proc/$pid")
+        comm=$(cat "/proc/$pid/comm")
+      fi
+      echo "$proto $port $uid $comm"
+    done | sort -u
+  args:
+    executable: /bin/bash
+  register: push_gateway_preflight_sockets
+  changed_when: false
+  check_mode: false
+
+- name: Users
+  ansible.builtin.getent:
+    database: passwd
+
+- name: The ports the gateway needs are free (or already its own)
+  vars:
+    push_gateway_preflight_expected: >-
+      {{ ([{'proto': 'tcp', 'port': 80, 'user': 'tc-gwproxy'}, {'proto': 'tcp', 'port': 443, 'user': 'tc-gwproxy'},
+           {'proto': 'udp', 'port': 443, 'user': 'tc-gwproxy'}] if push_gateway_caddy_enabled else [])
+         + [{'proto': 'tcp', 'port': push_gateway_port, 'user': 'tc-gateway'},
+            {'proto': 'tcp', 'port': push_gateway_health_port, 'user': 'tc-gateway'}] }}
+    push_gateway_preflight_conflicts: >-
+      {%- set ns = namespace(out=[]) -%}
+      {%- for line in push_gateway_preflight_sockets.stdout_lines -%}
+      {%- set f = line.split() -%}
+      {%- for e in push_gateway_preflight_expected if e.proto == f[0] and (e.port | string) == f[1] -%}
+      {%- set uid = (ansible_facts.getent_passwd[e.user][1] | string) if e.user in ansible_facts.getent_passwd else 'none' -%}
+      {%- if f[2] != uid -%}
+      {%- set ns.out = ns.out + [e.proto ~ '/' ~ e.port ~ ' is used by ' ~ f[3] ~ ' (uid ' ~ f[2] ~ '), needed by ' ~ e.user] -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {{ ns.out | unique | join('; ') }}
+  ansible.builtin.assert:
+    that: push_gateway_preflight_conflicts | length == 0
+    fail_msg: >-
+      {{ push_gateway_preflight_conflicts }}.
+      {{ 'Ports 80/443 belong to another web server: set push_gateway_caddy_enabled: false and let it forward
+      push_gateway_hostname to the gateway (docs/components/push-gateway.md). '
+         if push_gateway_caddy_enabled and (push_gateway_preflight_conflicts is search('(tcp|udp)/(80|443) ')) else '' }}Other
+      ports: move the gateway's with push_gateway_port / push_gateway_health_port.
+    quiet: true
+
+- name: Plesk and Docker
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: [/usr/local/psa/version, /run/docker.sock]
+  register: push_gateway_preflight_owners
+
+- name: The firewall is left to Plesk or Docker
+  ansible.builtin.assert:
+    that: not base_firewall_enabled
+    fail_msg: >-
+      This host runs {{ push_gateway_preflight_owners.results | selectattr('stat.exists') | map(attribute='item')
+      | map('regex_replace', '^/usr/local/psa/version$', 'Plesk') | map('regex_replace', '^/run/docker.sock$', 'Docker')
+      | join(' and ') }}: the playbook's firewall (base_firewall_enabled) would replace their rules. Set
+      base_firewall_enabled: false and keep the host's firewall (the gateway needs nothing but 443 of your proxy).
+    quiet: true
+  when: push_gateway_preflight_owners.results | selectattr('stat.exists') | list | length > 0
+
+# Podman 4.x (Ubuntu 24.04) misreads a host with a cgroup v1 hierarchy next to v2 (e.g. net_cls mounted
+# by VPN software): it moves conmon out of the service's cgroup and systemd stops every container right
+# after it started. Podman 5 (Debian 13) is not affected.
+- name: Cgroup hierarchies
+  ansible.builtin.slurp:
+    src: /proc/self/cgroup
+  register: push_gateway_preflight_cgroup
+  when: ansible_facts['distribution'] == 'Ubuntu'
+
+- name: Only cgroup v2 (for Podman 4 on Ubuntu)
+  ansible.builtin.assert:
+    that: >-
+      push_gateway_preflight_cgroup.content | b64decode | trim | split('\n') | reject('match', '^0::') | list | length == 0
+    fail_msg: >-
+      This host mounts a cgroup v1 hierarchy next to v2 ({{ push_gateway_preflight_cgroup.content | b64decode | trim
+      | split('\n') | reject('match', '^0::') | join(', ') }}), which Podman 4 can't run systemd services under:
+      unmount it (see `mount -t cgroup`) or use Debian 13 (Podman 5).
+    quiet: true
+  when: ansible_facts['distribution'] == 'Ubuntu'

@@ -44,7 +44,7 @@ jobs:
       - name: ansible-lint (production profile)
         run: ansible-lint
       - name: shellcheck
-        run: shellcheck test/dry-run.sh
+        run: shellcheck test/dry-run.sh test/gateway-dry-run.sh
 
   dry-run:
     name: Dry run (systemd container target)
@@ -94,3 +94,34 @@ jobs:
         if: always()
         working-directory: deploy
         run: test/dry-run.sh down
+
+  gateway-dry-run:
+    name: Push gateway behind Apache (Ubuntu 24.04 target)
+    if: github.event_name != 'push'
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GATEWAY_REPO: ${{ github.workspace }}/teamcraft-push-gateway
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: deploy
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Zeitgleich/teamcraft-push-gateway
+          path: teamcraft-push-gateway
+          token: ${{ secrets.TEAMCRAFT_READ_TOKEN || github.token }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - name: Ansible
+        working-directory: deploy
+        run: pip install ansible-core && ansible-galaxy collection install -r requirements.yml
+      - name: Dry run
+        working-directory: deploy
+        run: test/gateway-dry-run.sh all
+      - name: Remove the target
+        if: always()
+        working-directory: deploy
+        run: test/gateway-dry-run.sh down

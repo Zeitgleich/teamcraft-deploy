@@ -47,7 +47,9 @@
 - name: "Podman secrets: {{ base_service.name }}"
   ansible.builtin.shell: |
     set -o pipefail
-    printf '%s' "$VALUE" | podman secret create --replace {{ item.key }} -
+    # --replace only for an existing secret: Podman 4.9 (Ubuntu 24.04) fails it for a new one.
+    if podman secret inspect {{ item.key }} >/dev/null 2>&1; then replace=--replace; else replace=; fi
+    printf '%s' "$VALUE" | podman secret create $replace {{ item.key }} -
   args:
     executable: /bin/bash
   environment: "{{ base_service_env | combine({'VALUE': item.value}) }}"
