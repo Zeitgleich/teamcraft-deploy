@@ -23,7 +23,7 @@
   ansible.builtin.shell: |
     set -euo pipefail
     kc() { podman exec -i teamcraft-keycloak /opt/keycloak/bin/kcadm.sh "$@"; }
-    kc config credentials --config /tmp/kcadm.config --server "http://127.0.0.1:{{ teamcraft_ports.keycloak }}" \
+    kc config credentials --config /tmp/kcadm.config --server "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.keycloak }}" \
       --realm master --user admin --password "$ADMIN_PASSWORD" >/dev/null
     k() { kc "$@" --config /tmp/kcadm.config; }
     realm="{{ keycloak_realm }}"

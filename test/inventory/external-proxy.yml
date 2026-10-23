@@ -1,0 +1,8 @@
+# test/dry-run.sh with DRY_RUN_PROXY=nginx: no Caddy; nginx (Debian's package) on the target in front,
+# configured with the file the playbook writes to /srv/teamcraft/reverse-proxy/nginx/. Certificates come
+# from a test CA the script makes; the SFU's is read the way Plesk keeps it (one combined file whose name
+# the vhost's nginx configuration gives).
+caddy_enabled: false
+teamcraft_proxy_certificate_path: /etc/ssl/teamcraft-test/fullchain.pem
+teamcraft_proxy_certificate_key_path: /etc/ssl/teamcraft-test/privkey.pem
+teamcraft_sfu_certificate_nginx_conf: /var/www/vhosts/system/sfu.chat.172-31-250-10.sslip.io/conf/last_nginx.conf

@@ -20,7 +20,7 @@
 	encode zstd gzip
 	# Internal API (SFU reports, mail inbox): reached over loopback only, never from the internet.
 	respond /api/internal/* 404
-	reverse_proxy 127.0.0.1:{{ teamcraft_ports.server }}
+	reverse_proxy {{ teamcraft_upstream_host }}:{{ teamcraft_ports.server }}
 }
 
 # Certificate only; the SFU terminates QUIC itself on udp/{{ teamcraft_ports.sfu }}.
@@ -34,12 +34,12 @@
 	import tls
 	encode zstd gzip
 {% if keycloak_admin_console_public %}
-	reverse_proxy 127.0.0.1:{{ teamcraft_ports.keycloak }}
+	reverse_proxy {{ teamcraft_upstream_host }}:{{ teamcraft_ports.keycloak }}
 {% else %}
 	# What users and apps need; the admin console and admin API stay on loopback.
 	@public path /realms/* /resources/* /robots.txt
 	handle @public {
-		reverse_proxy 127.0.0.1:{{ teamcraft_ports.keycloak }}
+		reverse_proxy {{ teamcraft_upstream_host }}:{{ teamcraft_ports.keycloak }}
 	}
 	handle {
 		respond 404
@@ -60,7 +60,7 @@
 	header Access-Control-Max-Age "3600"
 	@preflight method OPTIONS
 	respond @preflight 204
-	reverse_proxy 127.0.0.1:{{ teamcraft_ports.garage_s3 }}
+	reverse_proxy {{ teamcraft_upstream_host }}:{{ teamcraft_ports.garage_s3 }}
 }
 {% endif %}
 {% if calcraft_enabled %}
@@ -68,6 +68,6 @@
 {{ calcraft_hostname }} {
 	import tls
 	encode zstd gzip
-	reverse_proxy 127.0.0.1:{{ teamcraft_ports.calcraft }}
+	reverse_proxy {{ teamcraft_upstream_host }}:{{ teamcraft_ports.calcraft }}
 }
 {% endif %}

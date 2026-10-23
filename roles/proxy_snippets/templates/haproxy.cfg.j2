@@ -1,0 +1,66 @@
+# Managed by Ansible (teamcraft-deploy, role proxy_snippets): TeamCraft behind HAProxy 2.6 or newer
+# (docs/proxies/haproxy.md). Merge the frontend's lines into yours (or use it as is) and add the backends.
+# Certificates: one PEM per host name (certificate chain and key in one file) in /etc/haproxy/certs/;
+# HAProxy picks one by SNI. Check with: haproxy -c -f /etc/haproxy/haproxy.cfg
+
+frontend https
+    bind :::443 v4v6 ssl crt /etc/haproxy/certs/ alpn h2,http/1.1
+    bind :::80 v4v6
+    mode http
+    http-request redirect scheme https code 301 unless { ssl_fc }
+    # Only HAProxy's own X-Forwarded-For (the client's address) reaches TeamCraft.
+    http-request del-header X-Forwarded-For
+    option forwardfor
+    http-request set-header X-Forwarded-Proto https
+    http-request set-header X-Forwarded-Port 443
+    http-request set-header X-Forwarded-Host %[req.hdr(host),host_only]
+    acl teamcraft_web req.hdr(host),host_only -i {{ teamcraft_web_hostnames | join(' ') }}
+    # Internal API (SFU reports, mail inbox): loopback only, never from the internet.
+    http-request return status 404 if teamcraft_web { path_beg /api/internal/ }
+    use_backend teamcraft_server if teamcraft_web
+{% if keycloak_enabled %}
+    acl teamcraft_keycloak req.hdr(host),host_only -i {{ keycloak_hostname }}
+{% if not keycloak_admin_console_public %}
+    # What users and apps need; the admin console and admin API stay on loopback (SSH tunnel).
+    http-request return status 404 if teamcraft_keycloak !{ path_beg /realms/ /resources/ } !{ path /robots.txt }
+{% endif %}
+    use_backend teamcraft_keycloak if teamcraft_keycloak
+{% endif %}
+{% if garage_enabled %}
+    # S3 (attachments): CORS for the web client, answered here.
+    acl teamcraft_s3 req.hdr(host),host_only -i {{ garage_hostname }}
+    acl teamcraft_web_origin req.hdr(origin) -m reg {{ proxy_snippets_web_origins_regex }}
+    http-request set-var(txn.teamcraft_origin) req.hdr(origin) if teamcraft_s3 teamcraft_web_origin
+    http-request return status 204 hdr Access-Control-Allow-Origin "%[var(txn.teamcraft_origin)]" hdr Access-Control-Allow-Methods "GET, HEAD, PUT, POST, DELETE" hdr Access-Control-Allow-Headers "*" hdr Access-Control-Max-Age 3600 hdr Vary Origin if teamcraft_s3 METH_OPTIONS teamcraft_web_origin
+    http-response set-header Access-Control-Allow-Origin "%[var(txn.teamcraft_origin)]" if { var(txn.teamcraft_origin) -m found }
+    http-response set-header Access-Control-Expose-Headers ETag if { var(txn.teamcraft_origin) -m found }
+    use_backend teamcraft_s3 if teamcraft_s3
+{% endif %}
+{% if calcraft_enabled %}
+    use_backend teamcraft_calcraft if { req.hdr(host),host_only -i {{ calcraft_hostname }} }
+{% endif %}
+
+backend teamcraft_server
+    mode http
+    # WebSockets (gateway, rendezvous): clients send a heartbeat every 30 s.
+    timeout tunnel 1h
+    server server {{ teamcraft_upstream_host }}:{{ teamcraft_ports.server }}
+{% if keycloak_enabled %}
+
+backend teamcraft_keycloak
+    mode http
+    server keycloak {{ teamcraft_upstream_host }}:{{ teamcraft_ports.keycloak }}
+{% endif %}
+{% if garage_enabled %}
+
+backend teamcraft_s3
+    mode http
+    timeout server 10m
+    server garage {{ teamcraft_upstream_host }}:{{ teamcraft_ports.garage_s3 }}
+{% endif %}
+{% if calcraft_enabled %}
+
+backend teamcraft_calcraft
+    mode http
+    server calcraft {{ teamcraft_upstream_host }}:{{ teamcraft_ports.calcraft }}
+{% endif %}

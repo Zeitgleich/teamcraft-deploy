@@ -1,0 +1,78 @@
+# Before anything is installed: does the host leave room for TeamCraft? Other software on the ports
+# (a web server on 80/443 while Caddy is enabled, something on a service's loopback port), or a Plesk
+# firewall that the playbook's own would replace. teamcraft_preflight_enabled: false skips it.
+- name: Listening sockets and the user that owns each (rootless services count as their user)
+  ansible.builtin.shell: |
+    set -o pipefail
+    ss -Htulnp | while read -r proto state recvq sendq local peer procs; do
+      port=${local##*:}
+      pid=$(printf '%s\n' "$procs" | sed -n 's/.*pid=\([0-9]*\).*/\1/p')
+      uid=- comm=-
+      if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then
+        uid=$(sed -n 's/.*user@\([0-9]*\)\.service.*/\1/p' "/proc/$pid/cgroup" | head -n 1)
+        [ -n "$uid" ] || uid=$(stat -c %u "/proc/$pid")
+        comm=$(cat "/proc/$pid/comm")
+      fi
+      echo "$proto $port $uid $comm"
+    done | sort -u
+  args:
+    executable: /bin/bash
+  register: base_preflight_sockets
+  changed_when: false
+  check_mode: false
+
+- name: Users
+  ansible.builtin.getent:
+    database: passwd
+
+- name: Ports TeamCraft needs are free (or already its own)
+  vars:
+    base_preflight_expected: >-
+      {{ ([{'proto': 'tcp', 'port': 80, 'user': 'tc-proxy'}, {'proto': 'tcp', 'port': 443, 'user': 'tc-proxy'},
+           {'proto': 'udp', 'port': 443, 'user': 'tc-proxy'}] if caddy_enabled else [])
+         + ([{'proto': 'tcp', 'port': teamcraft_ports.postgres, 'user': 'tc-db'}] if postgres_enabled else [])
+         + ([{'proto': 'tcp', 'port': teamcraft_ports.server, 'user': 'tc-server'}] if teamcraft_server_enabled else [])
+         + ([{'proto': 'udp', 'port': teamcraft_ports.sfu, 'user': 'tc-sfu'},
+             {'proto': 'tcp', 'port': teamcraft_ports.sfu_control, 'user': 'tc-sfu'}] if teamcraft_sfu_enabled else [])
+         + ([{'proto': 'tcp', 'port': teamcraft_ports.keycloak, 'user': 'tc-keycloak'},
+             {'proto': 'tcp', 'port': teamcraft_ports.keycloak_management, 'user': 'tc-keycloak'}] if keycloak_enabled else [])
+         + ([{'proto': 'tcp', 'port': teamcraft_ports.garage_s3, 'user': 'tc-garage'},
+             {'proto': 'tcp', 'port': teamcraft_ports.garage_rpc, 'user': 'tc-garage'},
+             {'proto': 'tcp', 'port': teamcraft_ports.garage_admin, 'user': 'tc-garage'}] if garage_enabled else [])
+         + ([{'proto': 'tcp', 'port': teamcraft_ports.calcraft, 'user': 'tc-calcraft'}] if calcraft_enabled else []) }}
+    base_preflight_conflicts: >-
+      {%- set ns = namespace(out=[]) -%}
+      {%- for line in base_preflight_sockets.stdout_lines -%}
+      {%- set f = line.split() -%}
+      {%- for e in base_preflight_expected if e.proto == f[0] and (e.port | string) == f[1] -%}
+      {%- set uid = (ansible_facts.getent_passwd[e.user][1] | string) if e.user in ansible_facts.getent_passwd else 'none' -%}
+      {%- if f[2] != uid -%}
+      {%- set ns.out = ns.out + [e.proto ~ '/' ~ e.port ~ ' is used by ' ~ f[3] ~ ' (uid ' ~ f[2] ~ '), needed by ' ~ e.user] -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {{ ns.out | unique | join('; ') }}
+  ansible.builtin.assert:
+    that: base_preflight_conflicts | length == 0
+    fail_msg: >-
+      {{ base_preflight_conflicts }}.
+      {{ 'Ports 80/443 belong to another web server: set caddy_enabled: false and put TeamCraft behind it (docs/reverse-proxy.md). '
+         if caddy_enabled and (base_preflight_conflicts is search('(tcp|udp)/(80|443) ')) else '' }}Other ports: move
+      TeamCraft's with teamcraft_ports in vars.yml (group_vars/teamcraft_servers.yml has the defaults).
+      teamcraft_preflight_enabled: false skips this check.
+    quiet: true
+
+- name: Plesk
+  ansible.builtin.stat:
+    path: /usr/local/psa/version
+  register: base_preflight_plesk
+
+- name: The firewall is left to Plesk
+  ansible.builtin.assert:
+    that: not base_firewall_enabled
+    fail_msg: >-
+      This is a Plesk server: the playbook's firewall (base_firewall_enabled) would replace Plesk's rules.
+      Set base_firewall_enabled: false and open udp/{{ teamcraft_ports.sfu }} in Plesk's Firewall
+      (docs/proxies/plesk.md).
+    quiet: true
+  when: base_preflight_plesk.stat.exists

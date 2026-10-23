@@ -79,12 +79,20 @@ jobs:
           python-version: "3.14"
       - name: Ansible
         working-directory: deploy
-        run: pip install ansible-core && ansible-galaxy collection install -r requirements.yml
+        # websockets: test/gateway-check.py (external proxy variant)
+        run: pip install ansible-core websockets && ansible-galaxy collection install -r requirements.yml
       - name: Dry run (with two brands)
         working-directory: deploy
         env:
           DRY_RUN_BRANDS: "1"
         run: test/dry-run.sh all
+      - name: Dry run behind nginx (no Caddy, SFU certificate as Plesk keeps it)
+        working-directory: deploy
+        env:
+          DRY_RUN_PROXY: nginx
+          # The e2e harness ran in the step before; this one checks the proxy, gateway and SFU certificate.
+          DRY_RUN_SKIP_E2E: "1"
+        run: test/dry-run.sh down && test/dry-run.sh all
       - name: Logs of the target on failure
         if: failure()
         run: |

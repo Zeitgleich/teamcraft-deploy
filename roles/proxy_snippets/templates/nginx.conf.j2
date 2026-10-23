@@ -1,0 +1,49 @@
+{% import 'nginx-locations.j2' as nginx with context %}
+# Managed by Ansible (teamcraft-deploy, role proxy_snippets): TeamCraft behind nginx
+# (docs/proxies/nginx.md). Copy it to /etc/nginx/conf.d/teamcraft.conf, then: nginx -t && systemctl reload nginx
+#
+# Certificates per host name (teamcraft_proxy_certificate_path / _key_path), e.g. from certbot with the
+# webroot below: certbot certonly --webroot -w /var/www/letsencrypt -d <host> (once per name).
+# nginx >= 1.25.1 for "http2 on"; with an older one write "listen 443 ssl http2;" instead.
+
+# Port 80: ACME challenges, everything else to HTTPS.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ proxy_snippets_hostnames | join(' ') }};
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+    }
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+{% for site in proxy_snippets_sites %}
+{% set kind, host, port = site.split() %}
+
+{% if kind == 'server' %}
+# TeamCraft server: API, WebSocket gateway, web client.
+{% elif kind == 'keycloak' %}
+# Keycloak (sign-in).
+{% elif kind == 's3' %}
+# Garage (S3, attachments).
+{% else %}
+# CalCraft (CalDAV).
+{% endif %}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name {{ host }};
+    ssl_certificate {{ teamcraft_proxy_certificate_path | replace('{host}', host) }};
+    ssl_certificate_key {{ teamcraft_proxy_certificate_key_path | replace('{host}', host) }};
+
+{{ nginx.locations(kind, host, port) }}}
+{% endfor %}
+{% if teamcraft_sfu_enabled %}
+
+# {{ teamcraft_sfu_hostname }} needs no proxying: the SFU speaks QUIC on udp/{{ teamcraft_ports.sfu }} itself, with a
+# copy of this host name's certificate (teamcraft_sfu_certificate_path, docs/reverse-proxy.md). Port 80
+# above only answers its ACME challenges.
+{% endif %}

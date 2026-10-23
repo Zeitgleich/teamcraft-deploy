@@ -1,0 +1,11 @@
+# Managed by Ansible (teamcraft-deploy, role teamcraft_sfu). The path unit catches most renewals at
+# once; this catches the rest (files replaced in ways inotify misses).
+[Unit]
+Description=Copy the TeamCraft SFU certificate hourly
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1h
+
+[Install]
+WantedBy=timers.target

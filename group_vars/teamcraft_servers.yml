@@ -6,6 +6,43 @@
 teamcraft_version: "1.0.0"
 teamcraft_image_registry: ghcr.io/zeitgleich
 
+# Reverse proxy: the bundled Caddy (TLS for every host name on 80/443), or false for one you already
+# run (nginx, Apache, Plesk, Traefik, HAProxy, another Caddy): the playbook then binds nothing public
+# but the SFU's UDP port and writes ready-made proxy configurations to teamcraft_proxy_snippets_dir
+# (docs/reverse-proxy.md).
+caddy_enabled: true
+# The loopback address the proxied services (server, Keycloak, Garage's S3 API, CalCraft) listen on and
+# are reached at: 127.0.0.1 or ::1. One address: each service binds a single socket.
+teamcraft_upstream_address: 127.0.0.1
+# The same as it goes into URLs and host:port pairs ([::1] for IPv6).
+teamcraft_upstream_host: "{{ ('[' ~ teamcraft_upstream_address ~ ']') if ':' in teamcraft_upstream_address else teamcraft_upstream_address }}"
+# Addresses of the proxy as the server sees it: its X-Forwarded-Host replaces Host (brands). Caddy
+# passes Host unchanged; an external proxy on this host connects from loopback.
+teamcraft_trusted_proxies: "{{ [] if caddy_enabled else ['127.0.0.1', '::1'] }}"
+
+# The SFU's certificate (QUIC on udp/4433 terminates in the SFU, no HTTP proxy can do it). With Caddy
+# it is Caddy's certificate for teamcraft_sfu_hostname. Without Caddy, or to use another certificate,
+# name existing files (certbot: /etc/letsencrypt/live/<sfu host>/fullchain.pem and privkey.pem; key and
+# certificate may also be one file), or the nginx configuration that names them (Plesk:
+# /var/www/vhosts/system/<sfu host>/conf/last_nginx.conf, whose file names change on every renewal).
+# A root timer copies them for tc-sfu when they change; the SFU restarts (docs/reverse-proxy.md).
+teamcraft_sfu_certificate_path: ""
+teamcraft_sfu_certificate_key_path: "{{ teamcraft_sfu_certificate_path }}"
+teamcraft_sfu_certificate_nginx_conf: ""
+teamcraft_sfu_certificate_external: >-
+  {{ teamcraft_sfu_certificate_path | length > 0 or teamcraft_sfu_certificate_nginx_conf | length > 0 }}
+
+# Without Caddy: proxy configurations filled in with this host's names and ports, written to the server
+# for you to copy (nginx, Apache, Plesk, HAProxy, Traefik, Caddy; docs/reverse-proxy.md). The proxy's
+# certificate files per host name ({host} is replaced), e.g. certbot's:
+teamcraft_proxy_snippets_dir: "{{ teamcraft_base_dir }}/reverse-proxy"
+teamcraft_proxy_certificate_path: "/etc/letsencrypt/live/{host}/fullchain.pem"
+teamcraft_proxy_certificate_key_path: "/etc/letsencrypt/live/{host}/privkey.pem"
+
+# Checks before anything is installed: ports already taken by other software (80/443 with Caddy, the
+# loopback ports of the services, the SFU's UDP port), and a Plesk firewall the playbook's would replace.
+teamcraft_preflight_enabled: true
+
 # Host names
 teamcraft_sfu_hostname: "sfu.{{ teamcraft_domain }}"
 keycloak_hostname: "id.{{ teamcraft_domain }}"
@@ -42,12 +79,13 @@ teamcraft_mail_from: "{{ teamcraft_admin_email }}"
 
 # Calendar for meetings (CalDAV): the bundled CalCraft, or an external server.
 teamcraft_caldav_calendar_url: >-
-  {{ ('http://127.0.0.1:' ~ teamcraft_ports.calcraft ~ '/dav/calendars/teamcraft/default/') if calcraft_enabled else '' }}
+  {{ ('http://' ~ teamcraft_upstream_host ~ ':' ~ teamcraft_ports.calcraft ~ '/dav/calendars/teamcraft/default/') if calcraft_enabled else '' }}
 teamcraft_caldav_username: teamcraft
 teamcraft_caldav_password: "{{ base_secrets.calcraft_password if calcraft_enabled else (base_secrets.caldav_password | default('')) }}"
 
 
-# Ports on the host. Only Caddy (80, 443) and the SFU are public; everything else is loopback.
+# Ports on the host. Only Caddy (80, 443) and the SFU are public; everything else is loopback. Change
+# any that other software on the host already uses (the preflight checks say which).
 teamcraft_ports:
   postgres: 5432
   server: 8080

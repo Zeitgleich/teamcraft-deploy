@@ -1,5 +1,5 @@
 # Reverse proxy and TLS for every public host name, rootless as tc-proxy (ports 80/443, HTTP/3).
-caddy_enabled: true
+# caddy_enabled: group_vars/teamcraft_servers.yml (false: your own proxy, docs/reverse-proxy.md).
 caddy_image: "docker.io/library/caddy:2.11.7"
 caddy_memory: 256m
 # acme: certificates from Let's Encrypt (DNS and ports 80/443 reachable from the internet).

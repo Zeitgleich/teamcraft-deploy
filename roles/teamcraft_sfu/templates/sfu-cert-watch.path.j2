@@ -1,5 +1,5 @@
 # Managed by Ansible (teamcraft-deploy, role teamcraft_sfu). Runs as tc-sfu: the SFU reads its certificate at start only,
-# so a renewed certificate (exported by tc-proxy's timer) restarts it. Running calls reconnect.
+# so a renewed certificate (copied by Caddy's export or teamcraft-sfu-cert) restarts it. Running calls reconnect.
 [Unit]
 Description=Restart the SFU when its certificate changes
 

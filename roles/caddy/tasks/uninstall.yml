@@ -1,0 +1,22 @@
+- name: Caddy stopped and removed
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_remove
+  vars:
+    base_service_name: caddy
+    base_service_user: tc-proxy
+
+# Or it would keep copying Caddy's last certificate over the one the SFU now gets elsewhere.
+- name: SFU certificate export stopped
+  ansible.builtin.systemd_service:
+    name: sfu-cert-export.timer
+    state: stopped
+    enabled: false
+    scope: user
+  become: true
+  become_user: tc-proxy
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd['tc-proxy'][1] }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd['tc-proxy'][1] }}/bus"
+  when: ansible_facts.getent_passwd['tc-proxy'] is not none
+  failed_when: false

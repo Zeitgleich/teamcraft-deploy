@@ -1,0 +1,105 @@
+# Managed by Ansible (teamcraft-deploy, role proxy_snippets): TeamCraft behind Traefik v3
+# (docs/proxies/traefik.md). A dynamic configuration for the file provider, e.g. in the directory of
+# providers.file.directory. Entry point "websecure" (443) and certificate resolver "letsencrypt" are
+# assumed: rename them to yours. Traefik must reach {{ teamcraft_upstream_host }}, i.e. run on this host
+# or in a container with host networking.
+http:
+  routers:
+    teamcraft:
+      rule: "{{ teamcraft_web_hostnames | map('regex_replace', '^', 'Host(`') | map('regex_replace', '$', '`)') | join(' || ') }}"
+      entryPoints: [websecure]
+      service: teamcraft-server
+      tls:
+        certResolver: letsencrypt
+    # Internal API (SFU reports, mail inbox): loopback only, never from the internet (403).
+    teamcraft-internal:
+      rule: "({{ teamcraft_web_hostnames | map('regex_replace', '^', 'Host(`') | map('regex_replace', '$', '`)') | join(' || ') }}) && PathPrefix(`/api/internal/`)"
+      priority: 10000
+      entryPoints: [websecure]
+      middlewares: [teamcraft-loopback-only]
+      service: teamcraft-server
+      tls:
+        certResolver: letsencrypt
+{% if keycloak_enabled %}
+    teamcraft-keycloak:
+{% if keycloak_admin_console_public %}
+      rule: "Host(`{{ keycloak_hostname }}`)"
+{% else %}
+      # What users and apps need; the admin console and admin API stay on loopback (Traefik: 404).
+      rule: "Host(`{{ keycloak_hostname }}`) && (PathPrefix(`/realms/`) || PathPrefix(`/resources/`) || Path(`/robots.txt`))"
+{% endif %}
+      entryPoints: [websecure]
+      service: teamcraft-keycloak
+      tls:
+        certResolver: letsencrypt
+{% endif %}
+{% if garage_enabled %}
+    teamcraft-s3:
+      rule: "Host(`{{ garage_hostname }}`)"
+      entryPoints: [websecure]
+      middlewares: [teamcraft-s3-cors]
+      service: teamcraft-s3
+      tls:
+        certResolver: letsencrypt
+{% endif %}
+{% if calcraft_enabled %}
+    teamcraft-calcraft:
+      rule: "Host(`{{ calcraft_hostname }}`)"
+      entryPoints: [websecure]
+      service: teamcraft-calcraft
+      tls:
+        certResolver: letsencrypt
+{% endif %}
+{% if teamcraft_sfu_enabled %}
+    # Only for the certificate of {{ teamcraft_sfu_hostname }}, which the SFU uses on udp/{{ teamcraft_ports.sfu }} (export it
+    # from Traefik's acme.json, docs/proxies/traefik.md).
+    teamcraft-sfu-certificate:
+      rule: "Host(`{{ teamcraft_sfu_hostname }}`)"
+      entryPoints: [websecure]
+      middlewares: [teamcraft-loopback-only]
+      service: teamcraft-server
+      tls:
+        certResolver: letsencrypt
+{% endif %}
+
+  middlewares:
+    teamcraft-loopback-only:
+      ipAllowList:
+        sourceRange: ["127.0.0.1/32", "::1/128"]
+{% if garage_enabled %}
+    # The web client uploads and downloads attachments directly (CORS), from every host name it has.
+    teamcraft-s3-cors:
+      headers:
+        accessControlAllowOriginList: {{ proxy_snippets_web_origins | to_json }}
+        accessControlAllowMethods: [GET, HEAD, PUT, POST, DELETE]
+        accessControlAllowHeaders: ["*"]
+        accessControlExposeHeaders: [ETag]
+        accessControlMaxAge: 3600
+        addVaryHeader: true
+{% endif %}
+
+  services:
+    # Traefik passes Host unchanged, handles WebSockets, and sets X-Forwarded-* (replacing what clients
+    # send unless forwardedHeaders.trustedIPs says otherwise).
+    teamcraft-server:
+      loadBalancer:
+        servers:
+          - url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.server }}"
+{% if keycloak_enabled %}
+    teamcraft-keycloak:
+      loadBalancer:
+        servers:
+          - url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.keycloak }}"
+{% endif %}
+{% if garage_enabled %}
+    teamcraft-s3:
+      loadBalancer:
+        servers:
+          - url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.garage_s3 }}"
+{% endif %}
+{% if calcraft_enabled %}
+    teamcraft-calcraft:
+      loadBalancer:
+        servers:
+          - url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.calcraft }}"
+{% endif %}

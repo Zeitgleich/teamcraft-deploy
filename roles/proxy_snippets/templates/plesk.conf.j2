@@ -1,0 +1,7 @@
+{% import 'nginx-locations.j2' as nginx with context %}
+# Managed by Ansible (teamcraft-deploy, role proxy_snippets): Plesk, {{ proxy_site[1] }}
+# (docs/proxies/plesk.md). Paste everything below into Websites & Domains > {{ proxy_site[1] }} >
+# Apache & nginx Settings > "Additional nginx directives", with "Proxy mode" switched off (and applied)
+# first. Plesk adds listen, server_name and the certificate itself.
+
+{{ nginx.locations(proxy_site[0], proxy_site[1], proxy_site[2], '') }}

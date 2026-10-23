@@ -3,7 +3,8 @@
 - name: Admin session for kcadm
   ansible.builtin.command: >-
     podman exec teamcraft-keycloak /opt/keycloak/bin/kcadm.sh config credentials --config /tmp/kcadm.config
-    --server http://127.0.0.1:{{ teamcraft_ports.keycloak }} --realm master --user admin --password {{ base_secrets.keycloak_admin_password | quote }}
+    --server http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.keycloak }} --realm master
+    --user admin --password {{ base_secrets.keycloak_admin_password | quote }}
   become: true
   become_user: tc-keycloak
   environment: "{{ base_service_env }}"

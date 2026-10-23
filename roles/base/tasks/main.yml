@@ -2,6 +2,11 @@
   ansible.builtin.include_tasks: validate.yml
   tags: [always]
 
+- name: Preflight checks
+  ansible.builtin.include_tasks: preflight.yml
+  when: teamcraft_preflight_enabled
+  tags: [always]
+
 - name: Packages, directories, firewall
   ansible.builtin.include_tasks:
     file: install.yml

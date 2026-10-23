@@ -10,7 +10,7 @@ rclone() {
     --secret backup_remote_access_key,type=env,target=RCLONE_CONFIG_DST_ACCESS_KEY_ID \
     --secret backup_remote_secret_key,type=env,target=RCLONE_CONFIG_DST_SECRET_ACCESS_KEY \
     -e RCLONE_CONFIG_SRC_TYPE=s3 -e RCLONE_CONFIG_SRC_PROVIDER=Other \
-    -e RCLONE_CONFIG_SRC_ENDPOINT="{{ ('http://127.0.0.1:' ~ teamcraft_ports.garage_s3) if garage_enabled else teamcraft_s3_endpoint }}" \
+    -e RCLONE_CONFIG_SRC_ENDPOINT="{{ ('http://' ~ teamcraft_upstream_host ~ ':' ~ teamcraft_ports.garage_s3) if garage_enabled else teamcraft_s3_endpoint }}" \
     -e RCLONE_CONFIG_SRC_REGION="{{ teamcraft_s3_region }}" \
     -e RCLONE_CONFIG_SRC_FORCE_PATH_STYLE="{{ teamcraft_s3_path_style | bool | lower }}" \
     -e RCLONE_CONFIG_DST_TYPE=s3 -e RCLONE_CONFIG_DST_PROVIDER=Other \

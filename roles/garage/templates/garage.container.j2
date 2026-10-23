@@ -5,7 +5,7 @@ Description=TeamCraft attachment storage (Garage, S3)
 [Container]
 Image={{ garage_image }}
 ContainerName=teamcraft-garage
-# Host network inside tc-garage's user namespace; listens on loopback only (Caddy proxies S3).
+# Host network inside tc-garage's user namespace; listens on loopback only (the proxy serves S3).
 Network=host
 Exec=/garage server
 Volume=/home/tc-garage/config/garage.toml:/etc/garage.toml:ro,Z

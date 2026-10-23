@@ -7,7 +7,7 @@ Image={{ calcraft_image }}
 Pull=missing
 ContainerName=teamcraft-calcraft
 Network=host
-Environment=CALCRAFT_SERVER__BIND=127.0.0.1:{{ teamcraft_ports.calcraft }}
+Environment=CALCRAFT_SERVER__BIND={{ teamcraft_upstream_host }}:{{ teamcraft_ports.calcraft }}
 Environment=CALCRAFT_STORAGE__DATABASE=/data/calcraft.db
 Environment=CALCRAFT_SECURITY__SECURE_COOKIES=true
 Volume=calcraft-data:/data

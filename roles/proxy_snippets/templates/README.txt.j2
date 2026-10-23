@@ -1,0 +1,27 @@
+Managed by Ansible (teamcraft-deploy, role proxy_snippets).
+
+TeamCraft runs here without its own reverse proxy (caddy_enabled: false). These are configurations for
+the proxy you run, filled in with this host's names and ports. Pick the one for your proxy, copy it to
+where your proxy reads its configuration, check and reload. The guide: docs/reverse-proxy.md in
+teamcraft-deploy.
+
+  nginx/teamcraft.conf     nginx (also behind other panels that let you add server blocks)
+  plesk/<host>.conf        Plesk: "Additional nginx directives" of each domain
+  apache/teamcraft.conf    Apache 2.4.47+
+  haproxy/teamcraft.cfg    HAProxy 2.6+
+  traefik/teamcraft.yml    Traefik v3, file provider
+  caddy/Caddyfile          another Caddy
+
+Host names and where they go ({{ teamcraft_upstream_host }} is this host's loopback):
+{% for site in proxy_snippets_sites %}
+{% set kind, host, port = site.split() %}
+  https://{{ host }}  ->  http://{{ teamcraft_upstream_host }}:{{ port }}  ({{ kind }})
+{% endfor %}
+{% if teamcraft_sfu_enabled %}
+  {{ teamcraft_sfu_hostname }}  ->  no proxy: the SFU itself on udp/{{ teamcraft_ports.sfu }}, with a copy of this name's
+  certificate ({{ teamcraft_cert_dir }}/sfu.crt, from {{ teamcraft_sfu_certificate_nginx_conf or teamcraft_sfu_certificate_path or 'not set' }})
+{% endif %}
+
+Every proxy must: pass Host unchanged; set X-Forwarded-For (the client's address), -Proto and -Host;
+upgrade WebSockets on /api/v1/gateway and /api/v1/rendezvous with a read timeout over 30 s; refuse
+/api/internal/; accept request bodies up to 4 MiB on the server's names and any size on S3's.

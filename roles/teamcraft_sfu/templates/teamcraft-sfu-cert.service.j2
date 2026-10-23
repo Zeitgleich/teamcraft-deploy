@@ -1,0 +1,7 @@
+# Managed by Ansible (teamcraft-deploy, role teamcraft_sfu).
+[Unit]
+Description=Copy the TeamCraft SFU certificate for tc-sfu
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/teamcraft-sfu-cert-copy

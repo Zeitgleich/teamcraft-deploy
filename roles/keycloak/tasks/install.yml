@@ -57,7 +57,7 @@
 
 - name: Wait for the realm
   ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ teamcraft_ports.keycloak }}/realms/{{ keycloak_realm }}/.well-known/openid-configuration"
+    url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.keycloak }}/realms/{{ keycloak_realm }}/.well-known/openid-configuration"
   register: keycloak_ready
   until: keycloak_ready.status == 200
   retries: 60
