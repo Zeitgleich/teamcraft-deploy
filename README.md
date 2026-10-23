@@ -21,6 +21,7 @@ just self-check
 |-----------------------------------------|-------------------------------------------------------------------|
 | [Prerequisites](docs/prerequisites.md)  | Server, software on your machine, firewall                        |
 | [DNS](docs/dns.md)                      | The host names and records (A + AAAA, the SFU's UDP port)         |
+| [Reverse proxy](docs/reverse-proxy.md)  | Next to a web server you run: nginx, Apache, Plesk, Traefik, ...  |
 | [Configuring](docs/configuring.md)      | Inventory, the few required settings, secrets (generated or sops) |
 | [Installing](docs/installing.md)        | Running the playbook, tags, the first user                        |
 | [Updating](docs/updating.md)            | New TeamCraft versions, `just update`                             |
@@ -32,7 +33,7 @@ just self-check
 
 | Component                                               | Default               | Runs as       | Toggle                     |
 |---------------------------------------------------------|-----------------------|---------------|----------------------------|
-| [Caddy](docs/components/caddy.md)                       | on                    | `tc-proxy`    | `caddy_enabled`            |
+| [Caddy](docs/components/caddy.md)                       | on (or your proxy)    | `tc-proxy`    | `caddy_enabled`            |
 | [PostgreSQL](docs/components/postgres.md)               | on                    | `tc-db`       | `postgres_enabled`         |
 | [TeamCraft server](docs/components/teamcraft-server.md) | on                    | `tc-server`   | `teamcraft_server_enabled` |
 | [TeamCraft SFU](docs/components/teamcraft-sfu.md)       | on                    | `tc-sfu`      | `teamcraft_sfu_enabled`    |

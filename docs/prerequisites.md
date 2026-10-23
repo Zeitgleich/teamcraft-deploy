@@ -13,6 +13,9 @@ The playbook replaces the server's nftables ruleset with its own (SSH, 80/443 tc
 UDP port, both families). Set `base_firewall_enabled: false` if you manage the firewall yourself; then
 open the same ports. A cloud provider's firewall in front needs the same ports for IPv4 and IPv6.
 
+**A server that already runs a web server** (nginx, Apache, Plesk, ...) on 80/443: TeamCraft goes
+behind it instead of bringing Caddy, and the firewall stays yours ([reverse-proxy.md](reverse-proxy.md)).
+
 ## Your machine
 
 - Ansible ≥ 2.16 (`pipx install ansible-core` or your distribution's package)
