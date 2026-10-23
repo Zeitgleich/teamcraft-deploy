@@ -214,6 +214,7 @@ verify() {
     local bare="${ip//[\[\]]/}"
     local resolve="$domain:443:$bare"
     check "readyz over $ip" curl -fsS --cacert "$ca" --resolve "$resolve" "https://$domain/readyz"
+    check "web client over $ip" sh -c "curl -fsS -D - --cacert '$ca' --resolve '$resolve' https://$domain/ | grep -qi '^content-security-policy:' && curl -fsS --cacert '$ca' --resolve '$resolve' https://$domain/ | grep -qi '<html'"
     check "internal API refused over $ip" sh -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --cacert '$ca' --resolve '$resolve' -X POST https://$domain/api/internal/v1/calls/participants/joined)\" = 404 ]"
     check "Keycloak realm over $ip" curl -fsS --cacert "$ca" --resolve "$id_domain:443:$bare" "https://$id_domain/realms/teamcraft/.well-known/openid-configuration"
     check "Keycloak admin console not public over $ip" sh -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --cacert '$ca' --resolve '$id_domain:443:$bare' https://$id_domain/admin/master/console/)\" = 404 ]"
