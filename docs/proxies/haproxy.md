@@ -7,7 +7,7 @@ For a server or load balancer running HAProxy 2.6 or newer. General part and set
 ```yaml
 # vars.yml
 caddy_enabled: false
-base_firewall_enabled: false     # if the host has its own firewall; then open udp/4433 there
+base_firewall_enabled: false     # if the host has its own firewall; then open udp/3478 there
 teamcraft_sfu_certificate_path: /etc/haproxy/certs/sfu.chat.example.com.pem   # key and chain in one file: fine
 ```
 

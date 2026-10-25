@@ -14,7 +14,7 @@ names too), e.g. with certbot. The generated file answers ACME challenges on por
 ```yaml
 # vars.yml
 caddy_enabled: false
-base_firewall_enabled: false     # if the host has its own firewall; then open udp/4433 there
+base_firewall_enabled: false     # if the host has its own firewall; then open udp/3478 there
 teamcraft_sfu_certificate_path: /etc/letsencrypt/live/sfu.chat.example.com/fullchain.pem
 teamcraft_sfu_certificate_key_path: /etc/letsencrypt/live/sfu.chat.example.com/privkey.pem
 # certificate paths the generated file uses ({host} = each host name); certbot's are the default

@@ -7,7 +7,7 @@ For a server that runs Apache 2.4 on 80/443. General part and settings:
 ```yaml
 # vars.yml
 caddy_enabled: false
-base_firewall_enabled: false     # if the host has its own firewall; then open udp/4433 there
+base_firewall_enabled: false     # if the host has its own firewall; then open udp/3478 there
 teamcraft_sfu_certificate_path: /etc/letsencrypt/live/sfu.chat.example.com/fullchain.pem
 teamcraft_sfu_certificate_key_path: /etc/letsencrypt/live/sfu.chat.example.com/privkey.pem
 ```
