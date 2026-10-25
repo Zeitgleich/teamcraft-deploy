@@ -6,6 +6,12 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** the SFU's default port is now **udp/3478** (was 4433), the STUN/TURN port restrictive
+  firewalls often allow already. Open udp/3478 (IPv4 and IPv6) in any host or hoster firewall before
+  running `just install-all`, or keep the old port with `teamcraft_ports.sfu: 4433`.
+
 ### Added
 
 - The web client's archive is checked against the release's `SHA256SUMS` by itself

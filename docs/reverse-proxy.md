@@ -74,7 +74,7 @@ For each host name ([dns.md](dns.md)):
 | `id.chat.example.com`  | `127.0.0.1:8180` | only `/realms/`, `/resources/`, `/robots.txt` (the admin console stays private)          |
 | `s3.chat.example.com`  | `127.0.0.1:3900` | `Host` unchanged, no body size limit, CORS for the web client's origins                  |
 | `cal.chat.example.com` | `127.0.0.1:5232` | CalCraft only                                                                             |
-| `sfu.chat.example.com` | – (not proxied)  | only a certificate; the SFU itself answers on **udp/4433**                                |
+| `sfu.chat.example.com` | – (not proxied)  | only a certificate; the SFU itself answers on **udp/3478**                                |
 
 And everywhere:
 
@@ -99,7 +99,7 @@ both, and the stricter one breaks the web client. HSTS for the other names (Keyc
 
 ## The SFU's certificate
 
-Calls run over WebTransport (HTTP/3, QUIC) on **udp/4433**, which no HTTP reverse proxy forwards: the
+Calls run over WebTransport (HTTP/3, QUIC) on **udp/3478**, which no HTTP reverse proxy forwards: the
 SFU terminates TLS itself and needs a certificate for `sfu.chat.example.com` (`teamcraft_sfu_hostname`)
 that clients trust. Get it like the others (certbot, Plesk, your proxy's ACME), then name the files:
 
@@ -133,14 +133,14 @@ With certbot you can also trigger the copy right at renewal:
 
 ## Firewall
 
-Your proxy's 80/443 stay as they are. TeamCraft adds one port: **udp/4433** (`teamcraft_ports.sfu`),
+Your proxy's 80/443 stay as they are. TeamCraft adds one port: **udp/3478** (`teamcraft_ports.sfu`),
 IPv4 and IPv6, for calls. With `base_firewall_enabled: true` the playbook's nftables ruleset opens it –
 but it **replaces the whole ruleset**, including your proxy's or panel's rules. On a shared server set
 `base_firewall_enabled: false` and open the port yourself:
 
 ```sh
-sudo ufw allow 4433/udp                                                        # ufw
-sudo firewall-cmd --permanent --add-port=4433/udp && sudo firewall-cmd --reload  # firewalld
+sudo ufw allow 3478/udp                                                        # ufw
+sudo firewall-cmd --permanent --add-port=3478/udp && sudo firewall-cmd --reload  # firewalld
 ```
 
 Plesk: [proxies/plesk.md](proxies/plesk.md#firewall). A hoster's firewall in front (cloud security
@@ -187,12 +187,12 @@ curl -s -D - -o /dev/null -X OPTIONS -H 'Origin: https://chat.example.com' https
   | grep -i access-control-allow-origin
 
 # SFU: QUIC handshake with a trusted certificate (needs a curl with HTTP/3, e.g. Fedora's or Debian 13's)
-curl -v -m 5 --http3-only https://sfu.chat.example.com:4433/ 2>&1 | grep -E 'SSL certificate verified|subject:'
+curl -v -m 5 --http3-only https://sfu.chat.example.com:3478/ 2>&1 | grep -E 'SSL certificate verified|subject:'
 ```
 
 Then the real thing: sign in with an app, send a message (gateway), upload an image (S3), and start a
-call between two devices on different networks (SFU, UDP 4433). A call that rings but never connects
-almost always means udp/4433 is blocked somewhere or the SFU's certificate is not trusted.
+call between two devices on different networks (SFU, UDP 3478). A call that rings but never connects
+almost always means udp/3478 is blocked somewhere or the SFU's certificate is not trusted.
 
 ## Push gateway
 

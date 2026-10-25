@@ -3,7 +3,7 @@
 teamcraft_base_dir: /srv/teamcraft
 # Only the base role's firewall template reads this; there is no SFU on this host.
 teamcraft_ports:
-  sfu: 4433
+  sfu: 3478
 base_firewall_open_sfu: false
 # Ports 80/443 for unprivileged users only for the bundled Caddy.
 base_unprivileged_web_ports: "{{ push_gateway_caddy_enabled }}"

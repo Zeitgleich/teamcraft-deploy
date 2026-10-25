@@ -20,7 +20,7 @@ teamcraft_upstream_host: "{{ ('[' ~ teamcraft_upstream_address ~ ']') if ':' in 
 # passes Host unchanged; an external proxy on this host connects from loopback.
 teamcraft_trusted_proxies: "{{ [] if caddy_enabled else ['127.0.0.1', '::1'] }}"
 
-# The SFU's certificate (QUIC on udp/4433 terminates in the SFU, no HTTP proxy can do it). With Caddy
+# The SFU's certificate (QUIC on udp/3478 terminates in the SFU, no HTTP proxy can do it). With Caddy
 # it is Caddy's certificate for teamcraft_sfu_hostname. Without Caddy, or to use another certificate,
 # name existing files (certbot: /etc/letsencrypt/live/<sfu host>/fullchain.pem and privkey.pem; key and
 # certificate may also be one file), or the nginx configuration that names them (Plesk:
@@ -89,7 +89,7 @@ teamcraft_caldav_password: "{{ base_secrets.calcraft_password if calcraft_enable
 teamcraft_port_defaults:
   postgres: 5432
   server: 8080
-  sfu: 4433
+  sfu: 3478
   sfu_control: 8081
   keycloak: 8180
   keycloak_management: 9180

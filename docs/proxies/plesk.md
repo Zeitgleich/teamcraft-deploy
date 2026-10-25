@@ -28,7 +28,7 @@ tell you whether it works.
   taken. Move only those, the rest keep their defaults:
 
   ```yaml
-  teamcraft_ports: {postgres: 13100, server: 13101, sfu: 4433, sfu_control: 13102}
+  teamcraft_ports: {postgres: 13100, server: 13101, sfu: 3478, sfu_control: 13102}
   ```
 
   TeamCraft's PostgreSQL is its own (rootless, on its own port); an existing PostgreSQL stays untouched.
@@ -153,14 +153,14 @@ directives; it never sees TeamCraft otherwise. After a playbook change of ports,
 ## Firewall
 
 **Tools & Settings → Firewall** (the Firewall extension; install it from Extensions if it's missing):
-*Add Custom Rule*, name `TeamCraft calls`, direction incoming, action allow, **UDP port 4433**, all
+*Add Custom Rule*, name `TeamCraft calls`, direction incoming, action allow, **UDP port 3478**, all
 sources; **Apply Changes**. 80/443 are open already. The firewall extension handles IPv4 and IPv6.
 
 ```sh
-sudo nft list ruleset | grep 4433     # or: sudo iptables -S | grep 4433; sudo ip6tables -S | grep 4433
+sudo nft list ruleset | grep 3478     # or: sudo iptables -S | grep 3478; sudo ip6tables -S | grep 3478
 ```
 
-A firewall at your hoster (security group, robot firewall) needs udp/4433 too.
+A firewall at your hoster (security group, robot firewall) needs udp/3478 too.
 
 ## Where Plesk keeps things
 
@@ -187,5 +187,5 @@ sudo grep -c proxy_pass /var/www/vhosts/system/chat.example.com/conf/vhost_nginx
 | `duplicate location "/"` when saving            | directives from before this change (`location /`): paste the current file |
 | web client loads without scripts or styles     | *Serve static files directly by nginx* is on for the domain              |
 | the Plesk default page instead of TeamCraft     | directives not saved on this domain, or the wrong domain                |
-| calls ring but never connect                    | udp/4433 closed (Plesk firewall, hoster), or the SFU certificate failed |
+| calls ring but never connect                    | udp/3478 closed (Plesk firewall, hoster), or the SFU certificate failed |
 | SFU certificate copy fails after a renewal      | `journalctl -u teamcraft-sfu-cert.service`: the file it names, and why  |

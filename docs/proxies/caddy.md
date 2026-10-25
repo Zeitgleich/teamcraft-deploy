@@ -6,7 +6,7 @@ instead of the playbook's own. General part and settings: [../reverse-proxy.md](
 ```yaml
 # vars.yml
 caddy_enabled: false
-base_firewall_enabled: false     # if the host has its own firewall; then open udp/4433 there
+base_firewall_enabled: false     # if the host has its own firewall; then open udp/3478 there
 # Caddy's certificate for the SFU's name (path for Debian's caddy package, ACME from Let's Encrypt):
 teamcraft_sfu_certificate_path: /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/sfu.chat.example.com/sfu.chat.example.com.crt
 teamcraft_sfu_certificate_key_path: /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/sfu.chat.example.com/sfu.chat.example.com.key

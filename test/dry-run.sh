@@ -225,9 +225,9 @@ verify() {
     else
       check_http3 "HTTP/3 to Caddy over $ip" curl -fsS --http3-only --cacert "$ca" --resolve "$resolve" "https://$domain/healthz"
     fi
-    # The QUIC handshake with a verified certificate proves UDP 4433 reachable and the exported
+    # The QUIC handshake with a verified certificate proves UDP 3478 reachable and the exported
     # certificate in use; the SFU then closes the plain HTTP/3 request (it only speaks WebTransport).
-    check_http3 "SFU QUIC + TLS over $ip" sh -c "curl -v -m 10 --http3-only --cacert '$ca' --resolve '$sfu_domain:4433:$bare' https://$sfu_domain:4433/ 2>&1 | grep -q 'SSL certificate verified'"
+    check_http3 "SFU QUIC + TLS over $ip" sh -c "curl -v -m 10 --http3-only --cacert '$ca' --resolve '$sfu_domain:3478:$bare' https://$sfu_domain:3478/ 2>&1 | grep -q 'SSL certificate verified'"
   done
   # shellcheck disable=SC2016 # expands inside the target, not here
   check "SFU restarts for a renewed certificate" docker exec "$target" sh -c '
@@ -258,7 +258,7 @@ verify() {
     # shellcheck disable=SC2016 # expands inside the target, not here
     check "SFU restarted for it" wait_until "the SFU restart" 30 docker exec "$target" sh -c \
       '[ "$(XDG_RUNTIME_DIR=/run/user/$(id -u tc-sfu) runuser -u tc-sfu -- systemctl --user show -p ExecMainPID --value teamcraft-sfu.service)" != "'"$before"'" ]'
-    check_http3 "SFU QUIC + TLS with the renewed certificate" sh -c "curl -v -m 10 --http3-only --cacert '$ca' --resolve '$sfu_domain:4433:$target_ip4' https://$sfu_domain:4433/ 2>&1 | grep -q 'SSL certificate verified'"
+    check_http3 "SFU QUIC + TLS with the renewed certificate" sh -c "curl -v -m 10 --http3-only --cacert '$ca' --resolve '$sfu_domain:3478:$target_ip4' https://$sfu_domain:3478/ 2>&1 | grep -q 'SSL certificate verified'"
     # The other generated configurations: accepted by Apache's and HAProxy's own checks (Debian's
     # packages, installed without starting them; nginx keeps the ports).
     # shellcheck disable=SC2016 # expands inside the target, not here

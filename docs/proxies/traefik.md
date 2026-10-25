@@ -6,7 +6,7 @@ Not covered by the dry run.
 ```yaml
 # vars.yml
 caddy_enabled: false
-base_firewall_enabled: false     # if the host has its own firewall; then open udp/4433 there
+base_firewall_enabled: false     # if the host has its own firewall; then open udp/3478 there
 ```
 
 The playbook writes `/srv/teamcraft/reverse-proxy/traefik/teamcraft.yml`, a dynamic configuration for
