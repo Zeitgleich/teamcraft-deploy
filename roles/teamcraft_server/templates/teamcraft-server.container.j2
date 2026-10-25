@@ -28,6 +28,7 @@ Secret=sfu_registration_token,type=env,target=TEAMCRAFT_CALLS__SFU_REGISTRATION_
 Secret=meetings_guest_token_secret,type=env,target=TEAMCRAFT_MEETINGS__GUEST_TOKEN_SECRET
 Secret=call_signing_key,type=mount,target=/run/secrets/call-signing.pem,uid=65532,gid=65532,mode=0400
 Secret=vapid_private_key,type=env,target=TEAMCRAFT_PUSH__VAPID_PRIVATE_KEY
+Secret=settings_key,type=env,target=TEAMCRAFT_SECRETS__KEY
 {% if teamcraft_server_secrets.push_gateway_key | length > 0 %}
 Secret=push_gateway_key,type=env,target=TEAMCRAFT_PUSH__GATEWAY__KEY
 {% endif %}

@@ -53,6 +53,7 @@ teamcraft_server_secrets:
   meetings_guest_token_secret: "{{ base_secrets.meetings_guest_token_secret }}"
   call_signing_key: "{{ base_secrets.call_signing_key }}"
   vapid_private_key: "{{ base_secrets.vapid_private_key }}"
+  settings_key: "{{ base_secrets.settings_key }}"
   push_gateway_key: "{{ base_secrets.push_gateway_key if teamcraft_push_gateway_url | length > 0 else '' }}"
   oidc_sync_client_secret: "{{ teamcraft_server_oidc_sync_client_secret if teamcraft_server_oidc_sync_enabled else '' }}"
   smtp_password: "{{ teamcraft_smtp_password if teamcraft_smtp_enabled else '' }}"

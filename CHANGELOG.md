@@ -14,6 +14,10 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Generated secret `settings_key`, passed to the server as `TEAMCRAFT_SECRETS__KEY`: the admin console can
+  now store passwords (mail server, CalDAV). Keep it with your backups; without it, stored passwords
+  can't be read.
+
 - The web client's archive is checked against the release's `SHA256SUMS` by itself
   (`teamcraft_server_web_sums_url`): a version bump no longer needs a new `teamcraft_server_web_checksum`,
   which stays as an optional override.

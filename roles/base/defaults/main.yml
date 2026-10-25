@@ -55,3 +55,5 @@ base_generated_secrets:
   # The server's identity at a push gateway (an Ed25519 seed); its quota and any block follow it.
   - {name: push_gateway_key, kind: base64url32}
   - {name: calcraft_password, kind: hex}
+  # Encrypts the passwords admins enter in the console (SMTP, CalDAV, ...); losing it loses them.
+  - {name: settings_key, kind: base64url32}
