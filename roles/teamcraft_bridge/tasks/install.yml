@@ -2,13 +2,14 @@
   ansible.builtin.assert:
     that:
       - teamcraft_bridge_secrets.bridge_bot_token | length > 0
+      - teamcraft_bridge_app_sources_enabled | bool or teamcraft_bridge_sources | length > 0
       - teamcraft_bridge_sources | rejectattr('name', 'defined') | list | length == 0
       - teamcraft_bridge_sources | rejectattr('conversation_id', 'defined') | list | length == 0
       - teamcraft_bridge_sources | selectattr('token', 'defined') | map(attribute='token') | map('length') | select('ge', 24) | list | length
         == teamcraft_bridge_sources | length
     fail_msg: >-
       teamcraft_bridge_enabled needs the bot's token as bridge_bot_token in the sops file (an admin creates
-      the bot in the admin console, Integrations; it is shown once), and every entry of
+      the bot in the admin console, Integrations; it is shown once), and every entry of the optional
       teamcraft_bridge_sources needs name, conversation_id and a token of 24 or more characters
       (docs/components/teamcraft-bridge.md).
     quiet: true

@@ -12,7 +12,13 @@ teamcraft_bridge_server_url: "https://{{ teamcraft_domain }}"
 # The bot's device name, shown in the channel's member and device lists.
 teamcraft_bridge_device_name: "{{ teamcraft_domain }} bridge"
 
-# One entry per producer, as the channel's Integrations section shows it ([[sources]] of
+# Sources come from the app: channel admins add them in the channel settings (Integrations ->
+# Sources) and the bridge reads them from the channel, encrypted, without a restart ([app_sources]).
+# Older history is read once per channel (pages of 50 messages) when the bridge's database is new.
+teamcraft_bridge_app_sources_enabled: true
+teamcraft_bridge_app_sources_history_pages: 200
+
+# Optional, usually empty: sources written into the configuration instead ([[sources]] of
 # teamcraft-bridge.example.toml): name, token (24 or more characters; it is the credential in the URL,
 # keep it in the sops file, e.g. token: "{{ base_secrets.bridge_source_ci }}"), conversation_id, and
 # optionally rate_limit_per_minute, alert_levels, danger_is_alert, mentions ([{user_id, name}]).
