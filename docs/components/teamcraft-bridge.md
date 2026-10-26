@@ -35,8 +35,9 @@ this role off.
    ```
 
    `just install-all`. On its first start the bridge enrolls the bot's device.
-4. **Channel settings → Integrations** of each channel: add the bot, then **Sources → Add source**
-   (a name, webhook or log lines). The app shows the URL once,
+4. **Channel settings → Integrations** of each channel: add the bot, then a workspace admin uses
+   **Sources → Add source** (a name, webhook or log lines; channel roles aren't signed yet, so the
+   bridge takes sources only from admins of the signed workspace roster). The app shows the URL once,
    `https://<teamcraft_domain>/hooks/<token>` or `/ingest/<token>`; point the producer at it. The
    bridge reads the new source from the channel (encrypted) and serves it within a second.
 

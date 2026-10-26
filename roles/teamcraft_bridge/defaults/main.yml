@@ -12,7 +12,7 @@ teamcraft_bridge_server_url: "https://{{ teamcraft_domain }}"
 # The bot's device name, shown in the channel's member and device lists.
 teamcraft_bridge_device_name: "{{ teamcraft_domain }} bridge"
 
-# Sources come from the app: channel admins add them in the channel settings (Integrations ->
+# Sources come from the app: workspace admins add them in the channel settings (Integrations ->
 # Sources) and the bridge reads them from the channel, encrypted, without a restart ([app_sources]).
 # Older history is read once per channel (pages of 50 messages) when the bridge's database is new.
 teamcraft_bridge_app_sources_enabled: true
