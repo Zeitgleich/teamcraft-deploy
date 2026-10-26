@@ -76,6 +76,10 @@ For each host name ([dns.md](dns.md)):
 | `cal.chat.example.com` | `127.0.0.1:5232` | CalCraft only                                                                             |
 | `sfu.chat.example.com` | – (not proxied)  | only a certificate; the SFU itself answers on **udp/3478**                                |
 
+With the integration bridge (`teamcraft_bridge_enabled`), `chat.example.com` also sends `/hooks/` and
+`/ingest/` to `127.0.0.1:8088`; `/ingest/` unbuffered, without a body size limit and with a long read
+timeout (log lines can be a stream). The generated files do it.
+
 And everywhere:
 
 - **TLS** with a certificate per name, HTTP → HTTPS redirect, HTTP/2.

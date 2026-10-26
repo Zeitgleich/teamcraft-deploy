@@ -1,0 +1,33 @@
+# The integration bridge (webhooks and log lines into encrypted channels), rootless as tc-bridge,
+# listening on loopback; the proxy routes /hooks/ and /ingest/ on teamcraft_domain to it
+# (docs/components/teamcraft-bridge.md). Off by default: it needs a bot an admin creates in the console,
+# whose token goes into the sops file as bridge_bot_token.
+teamcraft_bridge_enabled: false
+teamcraft_bridge_image: "{{ teamcraft_image_registry }}/teamcraft-bridge:{{ teamcraft_version }}"
+teamcraft_bridge_memory: 512m
+teamcraft_bridge_log_filter: info
+
+# The server the bot signs in to, through the proxy like any client.
+teamcraft_bridge_server_url: "https://{{ teamcraft_domain }}"
+# The bot's device name, shown in the channel's member and device lists.
+teamcraft_bridge_device_name: "{{ teamcraft_domain }} bridge"
+
+# One entry per producer, as the channel's Integrations section shows it ([[sources]] of
+# teamcraft-bridge.example.toml): name, token (24 or more characters; it is the credential in the URL,
+# keep it in the sops file, e.g. token: "{{ base_secrets.bridge_source_ci }}"), conversation_id, and
+# optionally rate_limit_per_minute, alert_levels, danger_is_alert, mentions ([{user_id, name}]).
+# Changing the list restarts the bridge.
+teamcraft_bridge_sources: []
+
+# Log lines are collected into one message per conversation ([batching]); the index segments of the
+# bot's channels are built once an hour ([index]).
+teamcraft_bridge_max_body_bytes: 1048576
+teamcraft_bridge_batch_interval_ms: 1000
+teamcraft_bridge_index_interval_secs: 3600
+
+# Podman secrets of the bridge (empty ones are left out). The bot token can't be generated; the
+# database key and the recovery passphrase are (base role).
+teamcraft_bridge_secrets:
+  bridge_bot_token: "{{ base_secrets.bridge_bot_token | default('') }}"
+  bridge_store_key: "{{ base_secrets.bridge_store_key }}"
+  bridge_passphrase: "{{ base_secrets.bridge_passphrase }}"

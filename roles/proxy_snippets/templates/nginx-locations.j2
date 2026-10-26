@@ -33,6 +33,21 @@
 {{ i }}    proxy_buffering off;
 {{ i }}}
 {% endfor %}
+{% if teamcraft_bridge_enabled %}
+{% for path in ['/hooks/', '/ingest/'] %}
+{{ i }}# Integration bridge: {{ 'webhooks' if 'hooks' in path else 'log lines, possibly a long-running stream (journalctl -f | curl -T -)' }}.
+{{ i }}location ^~ {{ path }} {
+{{ i }}    proxy_pass http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.bridge }};
+{{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
+{{ i }}    client_max_body_size {{ '2m' if 'hooks' in path else '0' }};
+{% if 'ingest' in path %}
+{{ i }}    proxy_request_buffering off;
+{{ i }}    proxy_read_timeout 1h;
+{{ i }}    proxy_send_timeout 1h;
+{% endif %}
+{{ i }}}
+{% endfor %}
+{% endif %}
 {{ i }}location {{ catch_all }} {
 {{ i }}    proxy_pass {{ upstream }};
 {{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";

@@ -17,6 +17,10 @@ frontend https
     acl teamcraft_web req.hdr(host),host_only -i {{ teamcraft_web_hostnames | join(' ') }}
     # Internal API (SFU reports, mail inbox): loopback only, never from the internet.
     http-request return status 404 if teamcraft_web { path_beg /api/internal/ }
+{% if teamcraft_bridge_enabled %}
+    # Integration bridge: webhooks and log lines.
+    use_backend teamcraft_bridge if teamcraft_web { path_beg /hooks/ /ingest/ }
+{% endif %}
     use_backend teamcraft_server if teamcraft_web
 {% if keycloak_enabled %}
     acl teamcraft_keycloak req.hdr(host),host_only -i {{ keycloak_hostname }}
@@ -45,6 +49,14 @@ backend teamcraft_server
     # WebSockets (gateway, rendezvous): clients send a heartbeat every 30 s.
     timeout tunnel 1h
     server server {{ teamcraft_upstream_host }}:{{ teamcraft_ports.server }}
+{% if teamcraft_bridge_enabled %}
+
+backend teamcraft_bridge
+    mode http
+    # Log lines can be a long-running stream (journalctl -f | curl -T -).
+    timeout server 1h
+    server bridge {{ teamcraft_upstream_host }}:{{ teamcraft_ports.bridge }}
+{% endif %}
 {% if keycloak_enabled %}
 
 backend teamcraft_keycloak

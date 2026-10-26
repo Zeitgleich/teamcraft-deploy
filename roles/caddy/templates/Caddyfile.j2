@@ -20,6 +20,13 @@
 	encode zstd gzip
 	# Internal API (SFU reports, mail inbox): reached over loopback only, never from the internet.
 	respond /api/internal/* 404
+{% if teamcraft_bridge_enabled %}
+	# Integration bridge: webhooks and streamed log lines (docs/components/teamcraft-bridge.md).
+	@bridge path /hooks/* /ingest/*
+	reverse_proxy @bridge {{ teamcraft_upstream_host }}:{{ teamcraft_ports.bridge }} {
+		flush_interval -1
+	}
+{% endif %}
 	reverse_proxy {{ teamcraft_upstream_host }}:{{ teamcraft_ports.server }}
 }
 

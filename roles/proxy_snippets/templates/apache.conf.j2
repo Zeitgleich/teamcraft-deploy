@@ -29,6 +29,14 @@
     # WebSockets (gateway, rendezvous). Clients send a heartbeat every 30 s.
     ProxyPass /api/v1/gateway {{ upstream }}/api/v1/gateway upgrade=websocket timeout=3600
     ProxyPass /api/v1/rendezvous {{ upstream }}/api/v1/rendezvous upgrade=websocket timeout=3600
+{% if teamcraft_bridge_enabled %}
+    # Integration bridge: webhooks, and log lines (possibly a long-running stream).
+    ProxyPass /hooks/ http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.bridge }}/hooks/
+    ProxyPass /ingest/ http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.bridge }}/ingest/ timeout=3600
+    <Location "/ingest/">
+        LimitRequestBody 0
+    </Location>
+{% endif %}
     ProxyPass / {{ upstream }}/
     ProxyPassReverse / {{ upstream }}/
     # The server accepts up to 4 MiB; attachments go to S3 directly.

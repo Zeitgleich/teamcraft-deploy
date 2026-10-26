@@ -18,6 +18,9 @@ Host names and where they go ({{ teamcraft_upstream_host }} is this host's loopb
 {% set kind, host, port = site.split() %}
   https://{{ host }}  ->  http://{{ teamcraft_upstream_host }}:{{ port }}  ({{ kind }})
 {% endfor %}
+{% if teamcraft_bridge_enabled %}
+  https://{{ teamcraft_domain }}/hooks/ and /ingest/  ->  http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.bridge }}  (integration bridge)
+{% endif %}
 {% if teamcraft_sfu_enabled %}
   {{ teamcraft_sfu_hostname }}  ->  no proxy: the SFU itself on udp/{{ teamcraft_ports.sfu }}, with a copy of this name's
   certificate ({{ teamcraft_cert_dir }}/sfu.crt, from {{ teamcraft_sfu_certificate_nginx_conf or teamcraft_sfu_certificate_path or 'not set' }})
@@ -25,4 +28,5 @@ Host names and where they go ({{ teamcraft_upstream_host }} is this host's loopb
 
 Every proxy must: pass Host unchanged; set X-Forwarded-For (the client's address), -Proto and -Host;
 upgrade WebSockets on /api/v1/gateway and /api/v1/rendezvous with a read timeout over 30 s; refuse
-/api/internal/; accept request bodies up to 4 MiB on the server's names and any size on S3's.
+/api/internal/; accept request bodies up to 4 MiB on the server's names and any size on S3's. With the
+integration bridge: send /hooks/ and /ingest/ to it, /ingest/ unbuffered with a long timeout.
