@@ -57,3 +57,7 @@ base_generated_secrets:
   - {name: calcraft_password, kind: hex}
   # Encrypts the passwords admins enter in the console (SMTP, CalDAV, ...); losing it loses them.
   - {name: settings_key, kind: base64url32}
+  # The integration bridge (teamcraft_bridge_enabled): its database key and the recovery passphrase of
+  # its bot's backup key. Its bot token (bridge_bot_token) can't be generated: it goes in the sops file.
+  - {name: bridge_store_key, kind: base64url32}
+  - {name: bridge_passphrase, kind: hex}

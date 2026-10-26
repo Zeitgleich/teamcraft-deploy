@@ -1,0 +1,51 @@
+- name: Bot token and sources are set
+  ansible.builtin.assert:
+    that:
+      - teamcraft_bridge_secrets.bridge_bot_token | length > 0
+      - teamcraft_bridge_sources | rejectattr('name', 'defined') | list | length == 0
+      - teamcraft_bridge_sources | rejectattr('conversation_id', 'defined') | list | length == 0
+      - teamcraft_bridge_sources | selectattr('token', 'defined') | map(attribute='token') | map('length') | select('ge', 24) | list | length
+        == teamcraft_bridge_sources | length
+    fail_msg: >-
+      teamcraft_bridge_enabled needs the bot's token as bridge_bot_token in the sops file (an admin creates
+      the bot in the admin console, Integrations; it is shown once), and every entry of
+      teamcraft_bridge_sources needs name, conversation_id and a token of 24 or more characters
+      (docs/components/teamcraft-bridge.md).
+    quiet: true
+
+# The configuration holds the source tokens, so it is a podman secret (mounted for the container's user
+# only), not a file in the home directory. Rendered here: a lookup inside the base role would search
+# that role's templates.
+- name: Configuration
+  ansible.builtin.set_fact:
+    teamcraft_bridge_config: "{{ lookup('ansible.builtin.template', 'teamcraft-bridge.toml.j2') }}"
+  no_log: true
+
+- name: Service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: teamcraft-bridge
+      user: tc-bridge
+      secrets: >-
+        {{ teamcraft_bridge_secrets | dict2items | selectattr('value') | items2dict
+           | combine({'bridge_config': teamcraft_bridge_config}) }}
+
+- name: Quadlet unit
+  ansible.builtin.template:
+    src: teamcraft-bridge.container.j2
+    dest: /home/tc-bridge/.config/containers/systemd/teamcraft-bridge.container
+    owner: tc-bridge
+    group: tc-bridge
+    mode: "0644"
+  register: teamcraft_bridge_unit
+
+- name: Restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: teamcraft-bridge
+    base_service_changed: "{{ teamcraft_bridge_unit.changed or base_service_secrets_changed }}"

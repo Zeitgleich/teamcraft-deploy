@@ -1,0 +1,41 @@
+# Managed by Ansible (teamcraft-deploy, role teamcraft_bridge). Runs rootless as tc-bridge.
+[Unit]
+Description=TeamCraft integration bridge (webhooks and logs into encrypted channels)
+
+[Container]
+Image={{ teamcraft_bridge_image }}
+Pull=missing
+ContainerName=teamcraft-bridge
+# Host network inside tc-bridge's user namespace; listens on loopback only (behind the reverse proxy).
+Network=host
+# The bot's keys and the content keys of its channels (SQLCipher, encrypted with bridge_store_key).
+Volume=teamcraft-bridge-data:/var/lib/teamcraft-bridge
+Secret=bridge_config,type=mount,target=/run/secrets/teamcraft-bridge.toml,uid=65532,gid=65532,mode=0400
+Environment=TEAMCRAFT_BRIDGE_CONFIG=/run/secrets/teamcraft-bridge.toml
+Environment=RUST_LOG={{ teamcraft_bridge_log_filter }}
+Environment=NO_COLOR=1
+Secret=bridge_bot_token,type=env,target=TEAMCRAFT_BRIDGE_SERVER__BOT_TOKEN
+Secret=bridge_store_key,type=env,target=TEAMCRAFT_BRIDGE_STORE__KEY
+Secret=bridge_passphrase,type=env,target=TEAMCRAFT_BRIDGE_IDENTITY__PASSPHRASE
+User=65532
+Group=65532
+DropCapability=ALL
+NoNewPrivileges=true
+ReadOnly=true
+RunInit=yes
+# Exec form (JSON): the distroless image has no shell for the string form.
+HealthCmd=["/usr/local/bin/teamcraft-bridge", "healthcheck"]
+HealthInterval=30s
+HealthStartPeriod=60s
+# The image sets TEAMCRAFT_BRIDGE_LISTEN__ADDRS=["[::]:8088"], and the environment wins over the file:
+# unset it, or the bridge listens on every address of the host (host network), unproxied.
+PodmanArgs=--memory={{ teamcraft_bridge_memory }} --unsetenv=TEAMCRAFT_BRIDGE_LISTEN__ADDRS
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=5s
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

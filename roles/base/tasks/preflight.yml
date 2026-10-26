@@ -39,7 +39,8 @@
          + ([{'proto': 'tcp', 'port': teamcraft_ports.garage_s3, 'user': 'tc-garage'},
              {'proto': 'tcp', 'port': teamcraft_ports.garage_rpc, 'user': 'tc-garage'},
              {'proto': 'tcp', 'port': teamcraft_ports.garage_admin, 'user': 'tc-garage'}] if garage_enabled else [])
-         + ([{'proto': 'tcp', 'port': teamcraft_ports.calcraft, 'user': 'tc-calcraft'}] if calcraft_enabled else []) }}
+         + ([{'proto': 'tcp', 'port': teamcraft_ports.calcraft, 'user': 'tc-calcraft'}] if calcraft_enabled else [])
+         + ([{'proto': 'tcp', 'port': teamcraft_ports.bridge, 'user': 'tc-bridge'}] if teamcraft_bridge_enabled else []) }}
     base_preflight_conflicts: >-
       {%- set ns = namespace(out=[]) -%}
       {%- for line in base_preflight_sockets.stdout_lines -%}

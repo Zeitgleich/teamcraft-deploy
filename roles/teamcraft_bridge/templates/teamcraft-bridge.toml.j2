@@ -1,0 +1,42 @@
+# Managed by Ansible (teamcraft-deploy, role teamcraft_bridge). Options: teamcraft-bridge.example.toml
+# in the TeamCraft repository. The bot token, the database key and the passphrase come from the
+# environment (podman secrets).
+
+[server]
+url = {{ teamcraft_bridge_server_url | to_json }}
+
+[store]
+path = "/var/lib/teamcraft-bridge/bridge.db"
+
+[identity]
+device_name = {{ teamcraft_bridge_device_name | to_json }}
+
+# Loopback only; the reverse proxy forwards /hooks/ and /ingest/ of teamcraft_domain.
+[listen]
+addrs = [{{ (teamcraft_upstream_host ~ ':' ~ teamcraft_ports.bridge) | to_json }}]
+max_body_bytes = {{ teamcraft_bridge_max_body_bytes | int }}
+
+[batching]
+interval_ms = {{ teamcraft_bridge_batch_interval_ms | int }}
+
+[index]
+interval_secs = {{ teamcraft_bridge_index_interval_secs | int }}
+{% for source in teamcraft_bridge_sources %}
+
+[[sources]]
+name = {{ source.name | string | to_json }}
+token = {{ source.token | string | to_json }}
+conversation_id = {{ source.conversation_id | string | to_json }}
+{% if source.rate_limit_per_minute is defined %}
+rate_limit_per_minute = {{ source.rate_limit_per_minute | int }}
+{% endif %}
+{% if source.alert_levels is defined %}
+alert_levels = {{ source.alert_levels | map('string') | list | to_json }}
+{% endif %}
+{% if source.danger_is_alert is defined %}
+danger_is_alert = {{ source.danger_is_alert | bool | lower }}
+{% endif %}
+{% if source.mentions is defined %}
+mentions = [{% for mention in source.mentions %}{ user_id = {{ mention.user_id | string | to_json }}, name = {{ mention.name | string | to_json }} }{{ ', ' if not loop.last }}{% endfor %}]
+{% endif %}
+{% endfor %}

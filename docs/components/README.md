@@ -6,6 +6,7 @@
 | [postgres.md](postgres.md)                 | `postgres`              | on                                |
 | [teamcraft-server.md](teamcraft-server.md) | `teamcraft_server`      | on                                |
 | [teamcraft-sfu.md](teamcraft-sfu.md)       | `teamcraft_sfu`         | on                                |
+| [teamcraft-bridge.md](teamcraft-bridge.md) | `teamcraft_bridge`      | off, webhooks and logs            |
 | [keycloak.md](keycloak.md)                 | `keycloak`              | on, or an external OIDC provider  |
 | [garage.md](garage.md)                     | `garage`                | on, or external S3                |
 | [push-gateway.md](push-gateway.md)         | `push_gateway`          | off, own host, for app publishers |

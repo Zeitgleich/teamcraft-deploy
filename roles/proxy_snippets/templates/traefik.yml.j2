@@ -20,6 +20,16 @@ http:
       service: teamcraft-server
       tls:
         certResolver: letsencrypt
+{% if teamcraft_bridge_enabled %}
+    # Integration bridge: webhooks and log lines.
+    teamcraft-bridge:
+      rule: "({{ teamcraft_web_hostnames | map('regex_replace', '^', 'Host(`') | map('regex_replace', '$', '`)') | join(' || ') }}) && (PathPrefix(`/hooks/`) || PathPrefix(`/ingest/`))"
+      priority: 9000
+      entryPoints: [websecure]
+      service: teamcraft-bridge
+      tls:
+        certResolver: letsencrypt
+{% endif %}
 {% if keycloak_enabled %}
     teamcraft-keycloak:
 {% if keycloak_admin_console_public %}
@@ -85,6 +95,12 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.server }}"
+{% if teamcraft_bridge_enabled %}
+    teamcraft-bridge:
+      loadBalancer:
+        servers:
+          - url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.bridge }}"
+{% endif %}
 {% if keycloak_enabled %}
     teamcraft-keycloak:
       loadBalancer:

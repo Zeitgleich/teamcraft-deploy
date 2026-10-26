@@ -14,6 +14,12 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Optional role `teamcraft_bridge` (`teamcraft_bridge_enabled`, off by default): the integration bridge
+  from TeamCraft 1.0.4 on, so webhooks and log lines reach encrypted channels. Caddy and the generated
+  proxy configurations route `/hooks/` and `/ingest/` of `teamcraft_domain` to it; it listens on
+  loopback. The bot token (`bridge_bot_token`, from the admin console) goes in the sops file; the
+  database key and recovery passphrase are generated (docs/components/teamcraft-bridge.md).
+
 - Generated secret `settings_key`, passed to the server as `TEAMCRAFT_SECRETS__KEY`: the admin console can
   now store passwords (mail server, CalDAV). Keep it with your backups; without it, stored passwords
   can't be read.

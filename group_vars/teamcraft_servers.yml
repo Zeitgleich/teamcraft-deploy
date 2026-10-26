@@ -84,7 +84,8 @@ teamcraft_caldav_username: teamcraft
 teamcraft_caldav_password: "{{ base_secrets.calcraft_password if calcraft_enabled else (base_secrets.caldav_password | default('')) }}"
 
 
-# Ports on the host. Only Caddy (80, 443) and the SFU are public; everything else is loopback. Change
+# Ports on the host. Only Caddy (80, 443) and the SFU are public; everything else is loopback (the
+# bridge's webhooks are reached through the proxy, under /hooks/ and /ingest/). Change
 # any that other software on the host already uses (the preflight checks say which).
 teamcraft_port_defaults:
   postgres: 5432
@@ -97,6 +98,7 @@ teamcraft_port_defaults:
   garage_rpc: 3901
   garage_admin: 3903
   calcraft: 5232
+  bridge: 8088
 # Set only the ones you change, e.g. teamcraft_ports: {postgres: 13100, server: 13101}: the base role
 # fills in the rest from teamcraft_port_defaults.
 teamcraft_ports: "{{ teamcraft_port_defaults }}"
@@ -109,6 +111,7 @@ teamcraft_services:
   - {name: caddy, user: tc-proxy, enabled: "{{ caddy_enabled }}"}
   - {name: teamcraft-server, user: tc-server, enabled: "{{ teamcraft_server_enabled }}"}
   - {name: teamcraft-sfu, user: tc-sfu, enabled: "{{ teamcraft_sfu_enabled }}"}
+  - {name: teamcraft-bridge, user: tc-bridge, enabled: "{{ teamcraft_bridge_enabled }}"}
   - {name: calcraft, user: tc-calcraft, enabled: "{{ calcraft_enabled }}"}
 
 # Shared directories
