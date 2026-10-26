@@ -27,42 +27,49 @@ this role off.
 2. Put it in the sops file ([../configuring.md](../configuring.md#secrets)) as `bridge_bot_token`. It
    can't be generated; the database key (`bridge_store_key`) and the recovery passphrase of the bot's
    backup key (`bridge_passphrase`) are.
-3. **Channel settings → Integrations** of each channel: add the bot. The section shows a `[[sources]]`
-   block with a token; copy it into `teamcraft_bridge_sources` (token into the sops file):
+3. Turn the role on and deploy once:
 
    ```yaml
    # inventory/host_vars/chat.example.com/vars.yml
    teamcraft_bridge_enabled: true
-   teamcraft_bridge_sources:
-     - name: ci
-       token: "{{ base_secrets.bridge_source_ci }}"   # bridge_source_ci: 24+ random characters, in sops
-       conversation_id: "123456789012345678"
-     - name: nas-logs
-       token: "{{ base_secrets.bridge_source_nas }}"
-       conversation_id: "123456789012345679"
-       alert_levels: [error, fatal, critical]
-       mentions: [{user_id: "123456789012345680", name: alice}]
    ```
 
-4. `just install-all`. On its first start the bridge enrolls the bot's device and joins the channels
-   it was added to. Point the producers at `https://<teamcraft_domain>/hooks/<token>` or
-   `/ingest/<token>` (the console shows loopback URLs for a bridge on the producer's host; the path
-   and token are the same).
+   `just install-all`. On its first start the bridge enrolls the bot's device.
+4. **Channel settings → Integrations** of each channel: add the bot, then a workspace admin uses
+   **Sources → Add source** (a name, webhook or log lines; channel roles aren't signed yet, so the
+   bridge takes sources only from admins of the signed workspace roster). The app shows the URL once,
+   `https://<teamcraft_domain>/hooks/<token>` or `/ingest/<token>`; point the producer at it. The
+   bridge reads the new source from the channel (encrypted) and serves it within a second.
 
-Adding a source or a channel later: add the entry and run `just install-all` (the bridge restarts).
+Adding a source or a channel later needs no deployment: it all happens in the app, and revoking a
+source there stops its token at once. Sources need a bridge image from the release that added
+them: an older image refuses the configuration's `[app_sources]` section and doesn't start.
 
-| Setting                                | Default                                         | Meaning                                                  |
-|----------------------------------------|-------------------------------------------------|----------------------------------------------------------|
-| `teamcraft_bridge_enabled`             | `false`                                         | run the bridge and route `/hooks/`, `/ingest/` to it     |
-| `teamcraft_bridge_image`               | `ghcr.io/zeitgleich/teamcraft-bridge:<version>` | image (released with the server from 1.0.4)              |
-| `teamcraft_bridge_sources`             | `[]`                                            | `[[sources]]`: name, token, conversation_id, options     |
-| `teamcraft_bridge_server_url`          | `https://<teamcraft_domain>`                    | the server the bot signs in to                           |
-| `teamcraft_bridge_device_name`         | `<teamcraft_domain> bridge`                     | the bot's device name                                    |
-| `teamcraft_bridge_memory`              | `512m`                                          | memory limit                                             |
-| `teamcraft_bridge_max_body_bytes`      | `1048576`                                       | largest webhook request                                  |
-| `teamcraft_bridge_batch_interval_ms`   | `1000`                                          | log lines collected into one message                     |
-| `teamcraft_bridge_index_interval_secs` | `3600`                                          | how often it builds its channels' search index segments  |
-| `teamcraft_ports.bridge`               | `8088`                                          | loopback port                                            |
+**Sources in the inventory (optional).** `teamcraft_bridge_sources` still writes `[[sources]]` into the
+configuration, for producers you'd rather keep in the inventory; changing it restarts the bridge:
+
+```yaml
+teamcraft_bridge_sources:
+  - name: ci
+    token: "{{ base_secrets.bridge_source_ci }}"   # bridge_source_ci: 24+ random characters, in sops
+    conversation_id: "123456789012345678"
+    mentions: [{user_id: "123456789012345680", name: alice}]
+```
+
+| Setting                                      | Default                                         | Meaning                                                       |
+|----------------------------------------------|-------------------------------------------------|---------------------------------------------------------------|
+| `teamcraft_bridge_enabled`                   | `false`                                         | run the bridge and route `/hooks/`, `/ingest/` to it          |
+| `teamcraft_bridge_image`                     | `ghcr.io/zeitgleich/teamcraft-bridge:<version>` | image (released with the server from 1.0.4)                   |
+| `teamcraft_bridge_app_sources_enabled`       | `true`                                          | serve the sources channel admins add in the app               |
+| `teamcraft_bridge_app_sources_history_pages` | `200`                                           | older history read once per channel for a new database        |
+| `teamcraft_bridge_sources`                   | `[]`                                            | optional `[[sources]]`: name, token, conversation_id, options |
+| `teamcraft_bridge_server_url`                | `https://<teamcraft_domain>`                    | the server the bot signs in to                                |
+| `teamcraft_bridge_device_name`               | `<teamcraft_domain> bridge`                     | the bot's device name                                         |
+| `teamcraft_bridge_memory`                    | `512m`                                          | memory limit                                                  |
+| `teamcraft_bridge_max_body_bytes`            | `1048576`                                       | largest webhook request                                       |
+| `teamcraft_bridge_batch_interval_ms`         | `1000`                                          | log lines collected into one message                          |
+| `teamcraft_bridge_index_interval_secs`       | `3600`                                          | how often it builds its channels' search index segments       |
+| `teamcraft_ports.bridge`                     | `8088`                                          | loopback port                                                 |
 
 ## Data and recovery
 

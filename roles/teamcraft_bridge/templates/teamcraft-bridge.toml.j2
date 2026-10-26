@@ -21,6 +21,11 @@ interval_ms = {{ teamcraft_bridge_batch_interval_ms | int }}
 
 [index]
 interval_secs = {{ teamcraft_bridge_index_interval_secs | int }}
+
+# Sources added in the app (channel settings -> Integrations -> Sources).
+[app_sources]
+enabled = {{ teamcraft_bridge_app_sources_enabled | bool | lower }}
+history_pages = {{ teamcraft_bridge_app_sources_history_pages | int }}
 {% for source in teamcraft_bridge_sources %}
 
 [[sources]]
