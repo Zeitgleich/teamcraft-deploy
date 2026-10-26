@@ -14,6 +14,9 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `teamcraft_oidc_app_scopes` (default adds `offline_access`): devices get long-lived refresh tokens and
+  stay signed in instead of following the provider's browser session.
+
 - Optional role `teamcraft_bridge` (`teamcraft_bridge_enabled`, off by default): the integration bridge
   from TeamCraft 1.0.4 on, so webhooks and log lines reach encrypted channels. Caddy and the generated
   proxy configurations route `/hooks/` and `/ingest/` of `teamcraft_domain` to it; it listens on

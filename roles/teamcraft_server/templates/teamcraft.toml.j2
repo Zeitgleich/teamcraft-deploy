@@ -31,6 +31,7 @@ listen_addr = "{{ teamcraft_upstream_host }}:{{ teamcraft_ports.server }}"
 issuer = "{{ teamcraft_oidc_issuer }}"
 client_id = "{{ teamcraft_oidc_client_id }}"
 server_client = "{{ teamcraft_oidc_server_client }}"
+app_scopes = {{ teamcraft_oidc_app_scopes | to_json }}
 {% if teamcraft_oidc_organization_claim | length > 0 %}
 organization_claim = "{{ teamcraft_oidc_organization_claim }}"
 {% endif %}
