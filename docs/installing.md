@@ -10,15 +10,15 @@ change what changed and restart the affected services; a run without changes rep
 
 ## Tags
 
-| Recipe                      | Tags                | Does                                                                                                                  |
-|-----------------------------|---------------------|-----------------------------------------------------------------------------------------------------------------------|
-| `just install-all`          | `install-all,start` | installs and starts the enabled components                                                                            |
-| `just setup-all`            | `setup-all,start`   | the same, and removes components you disabled                                                                         |
-| `just install-component X`  | `install-X,start`   | one component (`postgres`, `caddy`, `proxy-snippets`, `keycloak`, `garage`, `teamcraft-server`, `teamcraft-sfu`, `calcraft`, `backups`) |
-| `just start` / `just stop`  | `start` / `stop`    | starts (restarting changed services) / stops everything                                                               |
-| `just self-check`           | `self-check`        | services active, public endpoints, internal API not exposed                                                           |
-| `just ensure-admin u p [r]` | `ensure-admin`      | user `u` with password `p` and role `r` (default `owner`) in the bundled Keycloak                                     |
-| `just backup`               | `backup`            | runs the backups now                                                                                                  |
+| Recipe                      | Tags                | Does                                                                                                                                                           |
+|-----------------------------|---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `just install-all`          | `install-all,start` | installs and starts the enabled components                                                                                                                     |
+| `just setup-all`            | `setup-all,start`   | the same, and removes components you disabled                                                                                                                  |
+| `just install-component X`  | `install-X,start`   | one component (`postgres`, `caddy`, `proxy-snippets`, `keycloak`, `garage`, `teamcraft-server`, `teamcraft-sfu`, `teamcraft-notetaker`, `calcraft`, `backups`) |
+| `just start` / `just stop`  | `start` / `stop`    | starts (restarting changed services) / stops everything                                                                                                        |
+| `just self-check`           | `self-check`        | services active, public endpoints, internal API not exposed                                                                                                    |
+| `just ensure-admin u p [r]` | `ensure-admin`      | user `u` with password `p` and role `r` (default `owner`) in the bundled Keycloak                                                                              |
+| `just backup`               | `backup`            | runs the backups now                                                                                                                                           |
 
 Always run `install-*` together with `start` (the recipes do): restarts of changed services happen in
 the `start` step.

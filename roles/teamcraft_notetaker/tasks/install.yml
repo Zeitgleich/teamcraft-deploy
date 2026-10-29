@@ -1,0 +1,47 @@
+- name: Bot token is set
+  ansible.builtin.assert:
+    that:
+      - teamcraft_notetaker_secrets.notetaker_bot_token | length > 0
+      - teamcraft_notetaker_health_max_age_secs | int >= 30
+    fail_msg: >-
+      teamcraft_notetaker_enabled needs the notetaker bot's token as notetaker_bot_token in the sops file
+      (an admin creates the bot in the admin console, Integrations; it is shown once), and
+      teamcraft_notetaker_health_max_age_secs must be at least 30 (docs/components/teamcraft-notetaker.md).
+    quiet: true
+
+# A podman secret like the bridge's (mounted for the container's user only), so all of the notetaker's
+# files stay out of the home directory. Rendered here: a lookup inside the base role would search that
+# role's templates.
+- name: Configuration
+  ansible.builtin.set_fact:
+    teamcraft_notetaker_config: "{{ lookup('ansible.builtin.template', 'teamcraft-notetaker.toml.j2') }}"
+  no_log: true
+
+- name: Service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: teamcraft-notetaker
+      user: tc-notetaker
+      secrets: >-
+        {{ teamcraft_notetaker_secrets | dict2items | selectattr('value') | items2dict
+           | combine({'notetaker_config': teamcraft_notetaker_config}) }}
+
+- name: Quadlet unit
+  ansible.builtin.template:
+    src: teamcraft-notetaker.container.j2
+    dest: /home/tc-notetaker/.config/containers/systemd/teamcraft-notetaker.container
+    owner: tc-notetaker
+    group: tc-notetaker
+    mode: "0644"
+  register: teamcraft_notetaker_unit
+
+- name: Restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: teamcraft-notetaker
+    base_service_changed: "{{ teamcraft_notetaker_unit.changed or base_service_secrets_changed }}"

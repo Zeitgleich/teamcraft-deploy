@@ -33,6 +33,12 @@ teamcraft_admin_email: admin@example.com
 # teamcraft_sfu_certificate_path: /etc/letsencrypt/live/sfu.chat.example.com/fullchain.pem
 # teamcraft_sfu_certificate_key_path: /etc/letsencrypt/live/sfu.chat.example.com/privkey.pem
 
+# The notetaker: an AI participant that transcribes calls through OpenRouter and posts a summary. It
+# sends call audio out of the end-to-end encryption; read docs/components/teamcraft-notetaker.md
+# (privacy, cost, GDPR) first. Needs notetaker_bot_token in the sops file (below); the OpenRouter key
+# is entered in Administration -> Notetaker, or kept here as notetaker_openrouter_api_key in sops.
+# teamcraft_notetaker_enabled: true
+
 # Several brands (host names with their own name, logo, colors) on this server:
 # docs/components/branding.md (teamcraft_brands).
 

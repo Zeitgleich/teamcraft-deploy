@@ -11,7 +11,7 @@ enabling it again picks up where it left off.
 ```sh
 just stop
 # on the server, as root: users, their containers, volumes and the shared directories
-for user in tc-proxy tc-server tc-sfu tc-db tc-keycloak tc-garage tc-calcraft; do
+for user in tc-proxy tc-server tc-sfu tc-notetaker tc-db tc-keycloak tc-garage tc-calcraft; do
   id "$user" >/dev/null 2>&1 || continue
   loginctl disable-linger "$user"
   userdel -r "$user"

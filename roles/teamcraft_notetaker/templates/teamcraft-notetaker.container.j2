@@ -1,0 +1,51 @@
+# Managed by Ansible (teamcraft-deploy, role teamcraft_notetaker). Runs rootless as tc-notetaker.
+[Unit]
+Description=TeamCraft notetaker (AI transcript and summary of calls, through OpenRouter)
+
+[Container]
+Image={{ teamcraft_notetaker_image }}
+Pull=missing
+ContainerName=teamcraft-notetaker
+# Host network inside tc-notetaker's user namespace, like the bridge: it reaches the server and the SFU
+# (QUIC/UDP) under their public names, and OpenRouter. It listens on no port.
+Network=host
+# The bot's keys, its conversations and the transcripts of calls in progress (SQLCipher, encrypted with
+# notetaker_store_key), and the liveness file of the health check. Call audio never touches the disk.
+Volume=teamcraft-notetaker-data:/var/lib/teamcraft-notetaker
+Secret=notetaker_config,type=mount,target=/run/secrets/teamcraft-notetaker.toml,uid=65532,gid=65532,mode=0400
+Environment=TEAMCRAFT_NOTETAKER_CONFIG=/run/secrets/teamcraft-notetaker.toml
+Environment=RUST_LOG={{ teamcraft_notetaker_log_filter }}
+Environment=NO_COLOR=1
+Secret=notetaker_bot_token,type=env,target=TEAMCRAFT_NOTETAKER_SERVER__BOT_TOKEN
+Secret=notetaker_store_key,type=env,target=TEAMCRAFT_NOTETAKER_STORE__KEY
+Secret=notetaker_passphrase,type=env,target=TEAMCRAFT_NOTETAKER_IDENTITY__PASSPHRASE
+{% if teamcraft_notetaker_secrets.notetaker_openrouter_api_key | length > 0 %}
+# The OpenRouter key from the sops file; without it the notetaker fetches the key stored on the server.
+Secret=notetaker_openrouter_api_key,type=env,target=TEAMCRAFT_NOTETAKER_OPENROUTER__API_KEY
+{% endif %}
+User=65532
+Group=65532
+DropCapability=ALL
+NoNewPrivileges=true
+ReadOnly=true
+RunInit=yes
+# Exec form (JSON): the distroless image has no shell for the string form. It reads the liveness file
+# the worker rewrites every 10 seconds (no port to probe).
+HealthCmd=["/usr/local/bin/teamcraft-notetaker", "healthcheck"]
+HealthInterval=30s
+HealthTimeout=5s
+HealthStartPeriod=60s
+HealthRetries=3
+# --stop-timeout: calls in progress get shutdown_drain_secs to transcribe and post at a stop or restart.
+PodmanArgs=--memory={{ teamcraft_notetaker_memory }} --stop-timeout={{ teamcraft_notetaker_shutdown_drain_secs | int + 15 }}
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=5s
+TimeoutStartSec=300
+# Longer than the container's stop timeout above.
+TimeoutStopSec={{ teamcraft_notetaker_shutdown_drain_secs | int + 30 }}
+
+[Install]
+WantedBy=default.target

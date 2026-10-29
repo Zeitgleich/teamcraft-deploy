@@ -115,6 +115,7 @@ teamcraft_services:
   - {name: teamcraft-server, user: tc-server, enabled: "{{ teamcraft_server_enabled }}"}
   - {name: teamcraft-sfu, user: tc-sfu, enabled: "{{ teamcraft_sfu_enabled }}"}
   - {name: teamcraft-bridge, user: tc-bridge, enabled: "{{ teamcraft_bridge_enabled }}"}
+  - {name: teamcraft-notetaker, user: tc-notetaker, enabled: "{{ teamcraft_notetaker_enabled }}"}
   - {name: calcraft, user: tc-calcraft, enabled: "{{ calcraft_enabled }}"}
 
 # Shared directories

@@ -70,10 +70,11 @@ Keys you can set there (all optional; missing ones are generated): `postgres_pas
 `keycloak_server_client_secret`, `garage_rpc_secret`, `garage_admin_token`, `garage_access_key`,
 `garage_secret_key`, `sfu_registration_token`, `meetings_guest_token_secret`, `call_signing_key`
 (Ed25519 PEM), `vapid_private_key`, `push_gateway_key`, `calcraft_password`, `settings_key` (encrypts passwords entered in the admin console; keep it with your backups),
-`bridge_store_key`, `bridge_passphrase`; and those that can't be generated:
+`bridge_store_key`, `bridge_passphrase`, `notetaker_store_key`, `notetaker_passphrase`; and those that can't be generated:
 `s3_access_key` / `s3_secret_key` (external S3), `oidc_sync_client_secret` (external OIDC),
 `smtp_password`, `caldav_password` (external CalDAV), `backups_remote_access_key` /
 `backups_remote_secret_key`, `bridge_bot_token` (the integration bridge's bot,
-[components/teamcraft-bridge.md](components/teamcraft-bridge.md)). Other keys of the file are
+[components/teamcraft-bridge.md](components/teamcraft-bridge.md)), `notetaker_bot_token` and the optional
+`notetaker_openrouter_api_key` (the notetaker, [components/teamcraft-notetaker.md](components/teamcraft-notetaker.md)). Other keys of the file are
 available as `base_secrets.<key>`, e.g. for the bridge's source tokens. Rotating: change the value and run `just install-all`; the affected
 services restart.
