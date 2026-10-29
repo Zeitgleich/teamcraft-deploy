@@ -55,6 +55,9 @@ teamcraft_oidc_issuer: "{{ ('https://' ~ keycloak_hostname ~ '/realms/' ~ keyclo
 teamcraft_oidc_client_id: teamcraft
 # Confidential client of the TeamCraft server (deprovisioning sync).
 teamcraft_oidc_server_client: teamcraft-server
+# Scopes the apps ask for at sign-in. `offline_access` gives every device a long-lived refresh token,
+# so people stay signed in instead of following the provider's browser session (often 8-10 hours).
+teamcraft_oidc_app_scopes: ["openid", "profile", "email", "offline_access"]
 
 # Storage: bundled Garage unless disabled.
 garage_enabled: true

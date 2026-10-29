@@ -43,10 +43,6 @@ teamcraft_server_branding_max_asset_bytes: 524288
 #     default_expiry_days = 30
 teamcraft_server_extra_config: ""
 
-# Scopes the apps ask for at sign-in. `offline_access` gives every device a long-lived refresh token,
-# so people stay signed in instead of following the provider's browser session (often 8-10 hours).
-teamcraft_oidc_app_scopes: ["openid", "profile", "email", "offline_access"]
-
 # Podman secrets of the server (empty ones are left out). Derived from base_secrets.
 teamcraft_server_secrets:
   database_url: >-
