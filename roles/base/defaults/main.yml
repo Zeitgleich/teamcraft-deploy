@@ -61,3 +61,7 @@ base_generated_secrets:
   # its bot's backup key. Its bot token (bridge_bot_token) can't be generated: it goes in the sops file.
   - {name: bridge_store_key, kind: base64url32}
   - {name: bridge_passphrase, kind: hex}
+  # The notetaker (teamcraft_notetaker_enabled), likewise. Its bot token (notetaker_bot_token) and the
+  # optional OpenRouter key (notetaker_openrouter_api_key) can't be generated: they go in the sops file.
+  - {name: notetaker_store_key, kind: base64url32}
+  - {name: notetaker_passphrase, kind: hex}

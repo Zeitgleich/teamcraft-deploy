@@ -1,0 +1,29 @@
+# Managed by Ansible (teamcraft-deploy, role teamcraft_notetaker). Options:
+# crates/teamcraft-notetaker/teamcraft-notetaker.example.toml in the TeamCraft repository. The bot token,
+# the database key, the passphrase and the optional OpenRouter key come from the environment (podman
+# secrets). Models, language and summary instructions are the signed policy (Administration -> Notetaker).
+
+[server]
+url = {{ teamcraft_notetaker_server_url | to_json }}
+
+[store]
+path = "/var/lib/teamcraft-notetaker/notetaker.db"
+
+[identity]
+device_name = {{ teamcraft_notetaker_device_name | to_json }}
+
+[openrouter]
+base_url = {{ teamcraft_notetaker_openrouter_base_url | to_json }}
+request_timeout_secs = {{ teamcraft_notetaker_openrouter_request_timeout_secs | int }}
+max_retries = {{ teamcraft_notetaker_openrouter_max_retries | int }}
+max_concurrent_requests = {{ teamcraft_notetaker_openrouter_max_concurrent_requests | int }}
+
+[limits]
+max_call_minutes = {{ teamcraft_notetaker_max_call_minutes | int }}
+alone_timeout_secs = {{ teamcraft_notetaker_alone_timeout_secs | int }}
+shutdown_drain_secs = {{ teamcraft_notetaker_shutdown_drain_secs | int }}
+
+# The liveness file the container health check reads, in the volume.
+[health]
+file = "/var/lib/teamcraft-notetaker/notetaker.alive"
+max_age_secs = {{ teamcraft_notetaker_health_max_age_secs | int }}

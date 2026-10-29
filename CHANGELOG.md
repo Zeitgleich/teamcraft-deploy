@@ -14,6 +14,15 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Optional role `teamcraft_notetaker` (`teamcraft_notetaker_enabled`, off by default): the notetaker
+  from the TeamCraft release that adds it (TeamCraft#984), an AI participant that transcribes calls
+  through OpenRouter and posts a summary and the transcript. It listens on no port and runs with a
+  liveness-file health check; its image follows `teamcraft_version`. The bot token
+  (`notetaker_bot_token`, from the admin console) goes in the sops file, as does the OpenRouter key if it
+  should not be stored on the server (`notetaker_openrouter_api_key`); the database key and recovery
+  passphrase are generated. It takes call audio out of the end-to-end encryption, about $0.22 per meeting
+  hour: read docs/components/teamcraft-notetaker.md before turning it on.
+
 - `teamcraft_oidc_app_scopes` (default adds `offline_access`): devices get long-lived refresh tokens and
   stay signed in instead of following the provider's browser session.
 

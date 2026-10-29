@@ -16,6 +16,9 @@
     - role: teamcraft_sfu
     # Optional, off by default: webhooks and logs into channels (docs/components/teamcraft-bridge.md).
     - role: teamcraft_bridge
+    # Optional, off by default: AI transcript and summary of calls through OpenRouter
+    # (docs/components/teamcraft-notetaker.md).
+    - role: teamcraft_notetaker
     - role: calcraft
     - role: backups
     # Their tasks carry their own tags (start, stop, self-check).
