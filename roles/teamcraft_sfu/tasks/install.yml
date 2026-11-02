@@ -1,12 +1,17 @@
-# The kernel caps what the SFU asks for at this host-wide limit, without an error. It exists only in the
-# host's network namespace, so a target that is itself a container has nothing to set. Never lowered:
-# other software on the host may need more.
+# The kernel caps what the SFU asks for at this host-wide limit, without an error. A target that is itself a
+# container with its own network namespace has nothing to set: the file is missing or read-only there. Never
+# lowered: other software on the host may need more.
+- name: Host's limit for UDP receive buffers can be set here
+  ansible.builtin.stat:
+    path: /proc/sys/net/core/rmem_max
+  register: teamcraft_sfu_rmem_max_file
+  when: teamcraft_sfu_rmem_max_bytes | int > 0
+
 - name: Host's limit for UDP receive buffers
   ansible.builtin.slurp:
     src: /proc/sys/net/core/rmem_max
   register: teamcraft_sfu_rmem_max_current
-  failed_when: false
-  when: teamcraft_sfu_rmem_max_bytes | int > 0
+  when: teamcraft_sfu_rmem_max_file.stat.wusr | default(false)
 
 - name: UDP receive buffers as big as the SFU asks for
   ansible.posix.sysctl:
