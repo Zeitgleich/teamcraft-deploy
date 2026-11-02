@@ -14,6 +14,10 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- The SFU role raises the host's `net.core.rmem_max` to at least 4 MiB (`teamcraft_sfu_rmem_max_bytes`,
+  in `/etc/sysctl.d/60-teamcraft.conf`), so the SFU gets the UDP receive buffer it asks for and a big
+  keyframe isn't lost while it is busy. The next `just install-all` restarts the SFU once, which
+  interrupts running calls briefly. Details: docs/components/teamcraft-sfu.md.
 - Optional role `teamcraft_notetaker` (`teamcraft_notetaker_enabled`, off by default): the notetaker
   from the TeamCraft release that adds it (TeamCraft#984), an AI participant that transcribes calls
   through OpenRouter and posts a summary and the transcript. It listens on no port and runs with a

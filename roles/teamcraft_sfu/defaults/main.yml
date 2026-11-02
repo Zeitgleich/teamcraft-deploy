@@ -4,3 +4,6 @@ teamcraft_sfu_enabled: true
 teamcraft_sfu_image: "{{ teamcraft_image_registry }}/teamcraft-sfu:{{ teamcraft_version }}"
 teamcraft_sfu_memory: 1g
 teamcraft_sfu_log_filter: info
+# Lower limit for the host's net.core.rmem_max (host-wide, in /etc/sysctl.d/60-teamcraft.conf): the SFU
+# asks for a 4 MiB UDP receive buffer and the kernel silently caps it here. 0 leaves the host's value alone.
+teamcraft_sfu_rmem_max_bytes: 4194304

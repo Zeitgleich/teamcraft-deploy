@@ -1,3 +1,21 @@
+# The kernel caps what the SFU asks for at this host-wide limit, without an error. It exists only in the
+# host's network namespace, so a target that is itself a container has nothing to set. Never lowered:
+# other software on the host may need more.
+- name: Host's limit for UDP receive buffers
+  ansible.builtin.slurp:
+    src: /proc/sys/net/core/rmem_max
+  register: teamcraft_sfu_rmem_max_current
+  failed_when: false
+  when: teamcraft_sfu_rmem_max_bytes | int > 0
+
+- name: UDP receive buffers as big as the SFU asks for
+  ansible.posix.sysctl:
+    name: net.core.rmem_max
+    value: "{{ [teamcraft_sfu_rmem_max_current.content | b64decode | trim | int, teamcraft_sfu_rmem_max_bytes | int] | max }}"
+    sysctl_file: /etc/sysctl.d/60-teamcraft.conf
+  register: teamcraft_sfu_rmem_max
+  when: teamcraft_sfu_rmem_max_current.content is defined
+
 - name: Service user
   ansible.builtin.include_role:
     name: base
@@ -35,7 +53,10 @@
     tasks_from: service_changed
   vars:
     base_service_name: teamcraft-sfu
-    base_service_changed: "{{ teamcraft_sfu_unit.changed or teamcraft_sfu_config.changed or base_service_secrets_changed }}"
+    # The socket's buffer is sized at start, so a raised limit needs a restart too.
+    base_service_changed: >-
+      {{ teamcraft_sfu_unit.changed or teamcraft_sfu_config.changed or base_service_secrets_changed
+         or teamcraft_sfu_rmem_max.changed | default(false) }}
 
 # The SFU reads its certificate at start only; a renewed one (copied by Caddy's export or the root timer
 # below) restarts it.
