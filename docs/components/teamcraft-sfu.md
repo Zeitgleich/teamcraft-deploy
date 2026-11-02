@@ -36,5 +36,5 @@ A value that is back down after a reboot comes from a sysctl file that is read l
 lower: `grep -r rmem_max /etc/sysctl.conf /etc/sysctl.d`.
 
 The playbook can't set it when the target is itself a container with its own network namespace (LXC,
-some cheap VPS), where the setting doesn't exist: it skips the step, and the limit has to be raised on
-the machine underneath. To manage it yourself, set `teamcraft_sfu_rmem_max_bytes: 0`.
+some cheap VPS), where the setting is missing or read-only: it skips the step, and the limit has to be
+raised on the machine underneath. To manage it yourself, set `teamcraft_sfu_rmem_max_bytes: 0`.
