@@ -46,7 +46,8 @@ teamcraft_oidc_client_id: teamcraft
 ```
 
 Set the provider up like the realm above: a public client with PKCE and the redirect URIs, the four
-client roles in the access token (`resource_access.<client>.roles`), and an ID token claim
+client roles in the access token and the ID token (`resource_access.<client>.roles`; owners' apps
+keep the admin roster following them), and an ID token claim
 `tc_identity_key` from a user attribute of the same name that users may edit (TeamCraft stores the
 user's identity key fingerprint there). For deprovisioning also a confidential client with a service
 account (`teamcraft_server_oidc_sync_enabled: true`, secret `oidc_sync_client_secret`).

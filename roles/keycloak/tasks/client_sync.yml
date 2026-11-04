@@ -1,4 +1,4 @@
-# The realm import runs once; host names added later (brands) and the organization mapper are applied
+# The realm import runs once; host names added later (brands) and the mappers are applied
 # to the existing client here, on every run.
 - name: Admin session for kcadm
   ansible.builtin.command: >-
@@ -62,4 +62,30 @@
     - keycloak_organization_attribute | length > 0
     - teamcraft_oidc_organization_claim | length > 0
     - (keycloak_client.protocolMappers | default([]) | selectattr('name', 'equalto', 'organization') | list | length) == 0
+  changed_when: true
+
+# Owners' apps keep the admin roster following the provider: they read the client roles from the ID token.
+- name: Client roles mapper for the ID token
+  vars:
+    keycloak_client: "{{ (keycloak_client_current.stdout | from_json)[0] }}"
+    keycloak_mapper:
+      name: client roles in ID token
+      protocol: openid-connect
+      protocolMapper: oidc-usermodel-client-role-mapper
+      config:
+        usermodel.clientRoleMapping.clientId: "{{ teamcraft_oidc_client_id }}"
+        claim.name: "resource_access.${client_id}.roles"
+        jsonType.label: String
+        multivalued: "true"
+        id.token.claim: "true"
+        access.token.claim: "false"
+        userinfo.token.claim: "false"
+  ansible.builtin.command: >-
+    podman exec teamcraft-keycloak /opt/keycloak/bin/kcadm.sh create clients/{{ keycloak_client.id }}/protocol-mappers/models
+    --config /tmp/kcadm.config -r {{ keycloak_realm }}
+    -b {{ keycloak_mapper | to_json | quote }}
+  become: true
+  become_user: tc-keycloak
+  environment: "{{ base_service_env }}"
+  when: (keycloak_client.protocolMappers | default([]) | selectattr('name', 'equalto', 'client roles in ID token') | list | length) == 0
   changed_when: true
