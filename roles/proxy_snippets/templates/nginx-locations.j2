@@ -21,6 +21,10 @@
 {{ i }}location ^~ /api/internal/ {
 {{ i }}    return 404;
 {{ i }}}
+{{ i }}# A share from another app can carry plaintext files: answer without taking the body (TeamCraft docs/operations.md).
+{{ i }}location = /share-target {
+{{ i }}    return 303 /?share-failed;
+{{ i }}}
 {% for path in ['/api/v1/gateway', '/api/v1/rendezvous'] %}
 {{ i }}# WebSocket ({{ 'realtime gateway' if 'gateway' in path else 'device rendezvous' }}). Clients send a heartbeat every 30 s; the timeouts only
 {{ i }}# have to be longer than that.

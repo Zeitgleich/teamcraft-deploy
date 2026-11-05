@@ -95,6 +95,9 @@ And everywhere:
   is 1 MiB), unlimited on S3 (attachments are uploaded there directly), streamed.
 - **`/api/internal/` refused** (404 or 403): the SFU reports joins and leaves there over loopback, and
   nobody else may.
+- **`POST /share-target` answered by the proxy** (303 to `/?share-failed`, body not read): a share from
+  another app can carry plaintext files, and a proxy that buffers request bodies would keep them on disk.
+  The generated files do this. Traefik doesn't buffer, so there the server answers.
 
 Security headers need nothing from the proxy: the server sets them itself (`Content-Security-Policy`,
 `X-Content-Type-Options`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` on the API and

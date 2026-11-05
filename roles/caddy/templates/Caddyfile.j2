@@ -20,6 +20,8 @@
 	encode zstd gzip
 	# Internal API (SFU reports, mail inbox): reached over loopback only, never from the internet.
 	respond /api/internal/* 404
+	# A share from another app can carry plaintext files: answer without taking the body (TeamCraft docs/operations.md).
+	redir /share-target /?share-failed 303
 {% if teamcraft_bridge_enabled %}
 	# Integration bridge: webhooks and streamed log lines (docs/components/teamcraft-bridge.md).
 	@bridge path /hooks/* /ingest/*

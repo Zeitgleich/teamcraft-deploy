@@ -68,6 +68,7 @@ On Debian's nginx, `conf.d/*.conf` is included inside `http {}`; `sites-availabl
   sent), `X-Forwarded-Proto`, `-Host`, `-Port`;
 - the server: `location = /api/v1/gateway` and `= /api/v1/rendezvous` with `Upgrade`,
   `Connection "upgrade"` and 1 h read/send timeouts; `location ^~ /api/internal/ { return 404; }`;
+  `location = /share-target { return 303 /?share-failed; }`, so nginx doesn't spool a share's plaintext;
   `client_max_body_size 8m` (nginx's default of 1 MiB is too small);
 - Keycloak: only `/realms/`, `/resources/`, `/robots.txt`, with bigger proxy buffers (Keycloak's
   cookies and headers overflow nginx's defaults: "upstream sent too big header");
@@ -91,6 +92,9 @@ server {
 
     location ^~ /api/internal/ {
         return 404;
+    }
+    location = /share-target {
+        return 303 /?share-failed;
     }
     location = /api/v1/gateway {
         proxy_pass http://127.0.0.1:8080;

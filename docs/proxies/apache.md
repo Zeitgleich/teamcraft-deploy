@@ -42,6 +42,8 @@ configuration). The server's:
     <Location "/api/internal/">
         Require all denied
     </Location>
+    ProxyPass /share-target !
+    RedirectMatch 303 ^/share-target$ /?share-failed
     ProxyPass /api/v1/gateway http://127.0.0.1:8080/api/v1/gateway upgrade=websocket timeout=3600
     ProxyPass /api/v1/rendezvous http://127.0.0.1:8080/api/v1/rendezvous upgrade=websocket timeout=3600
     ProxyPass / http://127.0.0.1:8080/
