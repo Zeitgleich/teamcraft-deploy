@@ -8,6 +8,10 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Caddy and the generated nginx, Plesk, Apache and HAProxy files answer `/share-target` with a 303 without
+  reading the body. A share from another app can carry plaintext files, which a buffering proxy would
+  otherwise keep on disk. Web shares stay off in TeamCraft until this is rolled out. Own proxies:
+  docs/reverse-proxy.md. Traefik doesn't buffer, so nothing changes there.
 - **Breaking:** the SFU's default port is now **udp/3478** (was 4433), the STUN/TURN port restrictive
   firewalls often allow already. Open udp/3478 (IPv4 and IPv6) in any host or hoster firewall before
   running `just install-all`, or keep the old port with `teamcraft_ports.sfu: 4433`.

@@ -17,6 +17,8 @@ frontend https
     acl teamcraft_web req.hdr(host),host_only -i {{ teamcraft_web_hostnames | join(' ') }}
     # Internal API (SFU reports, mail inbox): loopback only, never from the internet.
     http-request return status 404 if teamcraft_web { path_beg /api/internal/ }
+    # A share from another app can carry plaintext files: answer without taking the body (TeamCraft docs/operations.md).
+    http-request redirect location /?share-failed code 303 if teamcraft_web { path /share-target }
 {% if teamcraft_bridge_enabled %}
     # Integration bridge: webhooks and log lines.
     use_backend teamcraft_bridge if teamcraft_web { path_beg /hooks/ /ingest/ }

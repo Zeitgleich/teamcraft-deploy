@@ -24,6 +24,8 @@ What it does, and why:
 - `X-Forwarded-Proto`, `-Port`, `-Host` set; `Host` is passed unchanged (HAProxy's default).
 - `http-request return status 404` for `/api/internal/` on the server's names and for anything on
   Keycloak's name besides `/realms/`, `/resources/`, `/robots.txt`.
+- `http-request redirect` for `/share-target`: answered here with a 303, so a share's plaintext stops at
+  HAProxy.
 - `timeout tunnel 1h` in the server's backend: WebSockets switch to tunnel mode after the upgrade, and
   `timeout tunnel` (not `timeout server`) applies then.
 - S3: CORS for every web client origin (preflight answered by HAProxy with 204), `timeout server 10m`

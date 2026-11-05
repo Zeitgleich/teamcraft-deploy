@@ -26,6 +26,9 @@
     <Location "/api/internal/">
         Require all denied
     </Location>
+    # A share from another app can carry plaintext files: answer without taking the body (TeamCraft docs/operations.md).
+    ProxyPass /share-target !
+    RedirectMatch 303 ^/share-target$ /?share-failed
     # WebSockets (gateway, rendezvous). Clients send a heartbeat every 30 s.
     ProxyPass /api/v1/gateway {{ upstream }}/api/v1/gateway upgrade=websocket timeout=3600
     ProxyPass /api/v1/rendezvous {{ upstream }}/api/v1/rendezvous upgrade=websocket timeout=3600
