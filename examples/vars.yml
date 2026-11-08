@@ -39,6 +39,15 @@ teamcraft_admin_email: admin@example.com
 # is entered in Administration -> Notetaker, or kept here as notetaker_openrouter_api_key in sops.
 # teamcraft_notetaker_enabled: true
 
+# Error tracking for the apps' crash reports: GlitchTip at glitchtip.<domain> (A + AAAA record), with
+# registration closed and a superuser for teamcraft_admin_email. Then paste a project's DSN into the
+# TeamCraft admin console (docs/components/glitchtip.md):
+# glitchtip_enabled: true
+# glitchtip_retention_days: 30                         # events and debug files are deleted after this
+# glitchtip_email_url is the mail server as a URL (with password): put it in the sops file.
+# Organization roles from the identity provider's claim, after an organization's SSO is set up in GlitchTip:
+# glitchtip_sso_role_claim: glitchtip_roles
+
 # Several brands (host names with their own name, logo, colors) on this server:
 # docs/components/branding.md (teamcraft_brands).
 

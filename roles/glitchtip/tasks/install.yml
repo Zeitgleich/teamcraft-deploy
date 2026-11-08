@@ -1,0 +1,167 @@
+- name: Settings
+  ansible.builtin.assert:
+    that:
+      - postgres_enabled
+      - glitchtip_hostname | length > 0
+      - "'@' in glitchtip_admin_email"
+      - glitchtip_retention_days | int >= 1
+      - glitchtip_s3_endpoint | length == 0 or (glitchtip_s3_access_key | length > 0 and glitchtip_s3_secret_key | length > 0)
+    fail_msg: >-
+      glitchtip_enabled needs the bundled Postgres (postgres_enabled), glitchtip_hostname, an e-mail address in
+      glitchtip_admin_email, glitchtip_retention_days of at least 1, and with glitchtip_s3_endpoint the keys
+      glitchtip_s3_access_key / glitchtip_s3_secret_key in the sops file (docs/components/glitchtip.md).
+    quiet: true
+
+- name: Service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: glitchtip
+      user: tc-glitchtip
+      secrets: "{{ glitchtip_secrets | dict2items | selectattr('value') | items2dict }}"
+
+- name: Quadlet units
+  ansible.builtin.template:
+    src: "{{ item }}.container.j2"
+    dest: "/home/tc-glitchtip/.config/containers/systemd/{{ item }}.container"
+    owner: tc-glitchtip
+    group: tc-glitchtip
+    mode: "0644"
+  loop: [glitchtip-valkey, glitchtip-web, glitchtip-worker]
+  register: glitchtip_units
+
+# Every unit reads secrets (the Valkey password is in all three), so a changed secret restarts all.
+- name: Restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: "{{ glitchtip_unit.item }}"
+    base_service_changed: "{{ glitchtip_unit.changed or base_service_secrets_changed }}"
+  loop: "{{ glitchtip_units.results }}"
+  loop_control:
+    loop_var: glitchtip_unit
+    label: "{{ glitchtip_unit.item }}"
+
+# The superuser is created now, so the web unit (which migrates the database) has to run.
+- name: Start
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_start
+  vars:
+    base_service_name: "{{ glitchtip_unit }}"
+    base_service_user: tc-glitchtip
+  loop: [glitchtip-valkey, glitchtip-web]
+  loop_control:
+    loop_var: glitchtip_unit
+
+- name: Wait until it answers (migrations run first)
+  ansible.builtin.uri:
+    url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.glitchtip }}/_health/"
+  register: glitchtip_ready
+  until: glitchtip_ready.status == 200
+  retries: 90
+  delay: 5
+
+# Before anyone can register: with registration closed, GlitchTip still lets the first user sign up.
+# `shell -c`, not stdin: Django's shell only reads stdin that is ready the moment it starts.
+- name: Superuser
+  ansible.builtin.command:
+    argv:
+      - podman
+      - exec
+      - -e
+      - GT_EMAIL
+      - -e
+      - GT_PASSWORD
+      - teamcraft-glitchtip-web
+      - ./manage.py
+      - shell
+      - -c
+      - |
+        import os
+        from django.contrib.auth import get_user_model
+        users = get_user_model().objects
+        if not users.filter(email__iexact=os.environ["GT_EMAIL"]).exists():
+            users.create_superuser(email=os.environ["GT_EMAIL"], password=os.environ["GT_PASSWORD"])
+            print("created")
+  environment: "{{ base_service_env | combine({'GT_EMAIL': glitchtip_admin_email, 'GT_PASSWORD': base_secrets.glitchtip_admin_password}) }}"
+  become: true
+  become_user: tc-glitchtip
+  register: glitchtip_superuser
+  changed_when: "'created' in glitchtip_superuser.stdout"
+  no_log: true
+
+# Organization roles from the identity provider's claim (glitchtip_sso_role_claim), on a timer.
+- name: SSO role sync
+  when: glitchtip_sso_role_claim | length > 0
+  block:
+    - name: SSO role sync script
+      ansible.builtin.copy:
+        src: sso-role-sync.py
+        dest: /home/tc-glitchtip/config/sso-role-sync.py
+        owner: tc-glitchtip
+        group: tc-glitchtip
+        mode: "0640"
+
+    - name: SSO role sync wrapper, service and timer
+      ansible.builtin.template:
+        src: "{{ item.name }}.j2"
+        dest: "{{ item.dir }}/{{ item.name }}"
+        owner: tc-glitchtip
+        group: tc-glitchtip
+        mode: "{{ item.mode }}"
+      loop:
+        - {name: glitchtip-sso-role-sync.sh, dir: /home/tc-glitchtip/config, mode: "0750"}
+        - {name: glitchtip-sso-role-sync.service, dir: /home/tc-glitchtip/.config/systemd/user, mode: "0644"}
+        - {name: glitchtip-sso-role-sync.timer, dir: /home/tc-glitchtip/.config/systemd/user, mode: "0644"}
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: SSO role sync timer enabled
+      ansible.builtin.systemd_service:
+        name: glitchtip-sso-role-sync.timer
+        state: started
+        enabled: true
+        daemon_reload: true
+        scope: user
+      become: true
+      become_user: tc-glitchtip
+      environment: "{{ base_service_env }}"
+
+- name: No SSO role sync
+  ansible.builtin.systemd_service:
+    name: glitchtip-sso-role-sync.timer
+    state: stopped
+    enabled: false
+    scope: user
+  become: true
+  become_user: tc-glitchtip
+  environment: "{{ base_service_env }}"
+  when: glitchtip_sso_role_claim | length == 0
+  # The timer was never installed unless a claim was set once.
+  failed_when: false
+
+# On a host of its own, the configurations for the web server already in front (the chat server's are
+# written by the proxy_snippets role).
+- name: Proxy configurations
+  when: glitchtip_standalone
+  block:
+    - name: Proxy configuration directory
+      ansible.builtin.file:
+        path: "{{ teamcraft_proxy_snippets_dir }}/glitchtip"
+        state: directory
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Proxy configurations (Plesk, Apache, nginx)
+      ansible.builtin.template:
+        src: "proxy/{{ item }}.j2"
+        dest: "{{ teamcraft_proxy_snippets_dir }}/glitchtip/{{ item }}"
+        owner: root
+        group: root
+        mode: "0640"
+      loop: [README.txt, plesk-apache-https.conf, plesk-nginx.conf, apache.conf, nginx.conf]

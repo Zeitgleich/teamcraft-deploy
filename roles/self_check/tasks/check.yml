@@ -29,9 +29,10 @@
     validate_certs: "{{ self_check_validate_certs }}"
   delegate_to: localhost
   become: false
-  loop: "{{ ['https://' ~ teamcraft_domain ~ '/readyz']
+  loop: "{{ (['https://' ~ teamcraft_domain ~ '/readyz'] if teamcraft_server_enabled else [])
             + (['https://' ~ keycloak_hostname ~ '/realms/' ~ keycloak_realm ~ '/.well-known/openid-configuration'] if keycloak_enabled else [])
-            + ([teamcraft_oidc_issuer ~ '/.well-known/openid-configuration'] if not keycloak_enabled else []) }}"
+            + ([teamcraft_oidc_issuer ~ '/.well-known/openid-configuration'] if teamcraft_server_enabled and not keycloak_enabled else [])
+            + (['https://' ~ glitchtip_hostname ~ '/_health/'] if glitchtip_enabled else []) }}"
 
 - name: Internal API is not reachable from outside
   ansible.builtin.uri:
@@ -42,6 +43,7 @@
     validate_certs: "{{ self_check_validate_certs }}"
   delegate_to: localhost
   become: false
+  when: teamcraft_server_enabled
 
 - name: S3 endpoint answers
   ansible.builtin.uri:
@@ -50,7 +52,10 @@
     validate_certs: "{{ self_check_validate_certs }}"
   delegate_to: localhost
   become: false
+  when: teamcraft_server_enabled
 
 - name: All good
   ansible.builtin.debug:
-    msg: "TeamCraft at https://{{ teamcraft_domain }} looks healthy."
+    msg: >-
+      {{ ('TeamCraft at https://' ~ teamcraft_domain) if teamcraft_server_enabled
+         else ('GlitchTip at https://' ~ glitchtip_hostname) }} looks healthy.

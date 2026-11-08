@@ -1,0 +1,9 @@
+# test/gateway-dry-run.sh with DRY_RUN_CRASH_REPORTS=1: GlitchTip on the push gateway's machine, behind
+# the same Apache. Ports moved off 8090/8091 (another service holds them, as Docker does on the real
+# host) and off the gateway's (moved to 18090/18091 by the script).
+glitchtip_hostname: crashlogs.172-31-251-10.sslip.io
+glitchtip_admin_email: ops@example.com
+teamcraft_ports: {glitchtip: 18092, glitchtip_valkey: 18093, postgres: 18094}
+# The host's firewall belongs to "Plesk" (the script fakes its marker file).
+base_firewall_enabled: false
+self_check_validate_certs: false

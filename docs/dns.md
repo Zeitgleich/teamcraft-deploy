@@ -3,13 +3,14 @@
 All names derive from `teamcraft_domain` (here `chat.example.com`). Create an **A and an AAAA**
 record for each, pointing at the server:
 
-| Name                   | For                          | Needed when        |
-|------------------------|------------------------------|--------------------|
-| `chat.example.com`     | API, gateway, web client     | always             |
-| `sfu.chat.example.com` | calls (QUIC on **udp/3478**) | always             |
-| `id.chat.example.com`  | bundled Keycloak (sign-in)   | `keycloak_enabled` |
-| `s3.chat.example.com`  | bundled Garage (attachments) | `garage_enabled`   |
-| `cal.chat.example.com` | bundled CalCraft             | `calcraft_enabled` |
+| Name                         | For                          | Needed when         |
+|------------------------------|------------------------------|---------------------|
+| `chat.example.com`           | API, gateway, web client     | always              |
+| `sfu.chat.example.com`       | calls (QUIC on **udp/3478**) | always              |
+| `id.chat.example.com`        | bundled Keycloak (sign-in)   | `keycloak_enabled`  |
+| `s3.chat.example.com`        | bundled Garage (attachments) | `garage_enabled`    |
+| `cal.chat.example.com`       | bundled CalCraft             | `calcraft_enabled`  |
+| `glitchtip.chat.example.com` | GlitchTip (crash reports)    | `glitchtip_enabled` |
 
 Every host name of a brand (`teamcraft_brands`, [components/branding.md](components/branding.md))
 needs the same two records.
@@ -22,4 +23,4 @@ the SFU's name included: it needs no proxying, only its certificate. The SFU use
 **UDP port 3478**, which must be reachable over IPv4 and IPv6.
 
 The names can be changed (`teamcraft_sfu_hostname`, `keycloak_hostname`, `garage_hostname`,
-`calcraft_hostname`) if you prefer others.
+`calcraft_hostname`, `glitchtip_hostname`) if you prefer others.

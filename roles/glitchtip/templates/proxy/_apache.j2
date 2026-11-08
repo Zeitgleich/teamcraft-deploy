@@ -1,0 +1,12 @@
+{# Apache directives inside GlitchTip's HTTPS virtual host (Plesk's "Additional directives for HTTPS", or apache.conf). #}
+{% set upstream = 'http://' ~ teamcraft_upstream_host ~ ':' ~ teamcraft_ports.glitchtip %}
+ProxyRequests Off
+# Host unchanged; mod_proxy appends the client's address to X-Forwarded-For.
+ProxyPreserveHost On
+RequestHeader set X-Forwarded-Proto "https"
+# Let's Encrypt renewals of this host name stay with the web server.
+ProxyPass /.well-known/acme-challenge/ !
+# Crash reports (envelopes, minidumps) and debug file uploads.
+LimitRequestBody 104857600
+ProxyPass / {{ upstream }}/ timeout=120
+ProxyPassReverse / {{ upstream }}/

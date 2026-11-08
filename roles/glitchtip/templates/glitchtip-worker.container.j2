@@ -1,0 +1,31 @@
+# Managed by Ansible (teamcraft-deploy, role glitchtip). Runs rootless as tc-glitchtip.
+[Unit]
+Description=GlitchTip worker (event processing, notifications, scheduled clean-up)
+After=glitchtip-web.service
+Wants=glitchtip-valkey.service
+
+[Container]
+Image={{ glitchtip_image }}
+Pull=missing
+ContainerName=teamcraft-glitchtip-worker
+# Host network inside tc-glitchtip's user namespace; listens on no port.
+Network=host
+# One process with the scheduler inside (runworker --scheduler).
+Environment=SERVER_ROLE=worker
+Environment=VTASKS_CONCURRENCY={{ glitchtip_worker_concurrency | int }}
+Environment=VTASKS_INGEST_CONCURRENCY={{ glitchtip_worker_concurrency | int }}
+{# The include ends without a newline; the line after it supplies one. #}
+{% include 'glitchtip-environment.j2' %}
+
+NoNewPrivileges=true
+DropCapability=ALL
+PodmanArgs=--memory={{ glitchtip_worker_memory }}
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=5s
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

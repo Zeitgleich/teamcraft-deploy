@@ -67,14 +67,15 @@ Anything else works too if it can do what this list says.
 
 For each host name ([dns.md](dns.md)):
 
-| Host name              | Forward to       | Needs                                                                                     |
-|------------------------|------------------|-------------------------------------------------------------------------------------------|
-| `chat.example.com`     | `127.0.0.1:8080` | WebSocket upgrade on `/api/v1/gateway` and `/api/v1/rendezvous`; refuse `/api/internal/` |
-| brand host names       | `127.0.0.1:8080` | the same (one certificate per name, or one with all names)                               |
-| `id.chat.example.com`  | `127.0.0.1:8180` | only `/realms/`, `/resources/`, `/robots.txt` (the admin console stays private)          |
-| `s3.chat.example.com`  | `127.0.0.1:3900` | `Host` unchanged, no body size limit, CORS for the web client's origins                  |
-| `cal.chat.example.com` | `127.0.0.1:5232` | CalCraft only                                                                             |
-| `sfu.chat.example.com` | – (not proxied)  | only a certificate; the SFU itself answers on **udp/3478**                                |
+| Host name                    | Forward to       | Needs                                                                                    |
+|------------------------------|------------------|------------------------------------------------------------------------------------------|
+| `chat.example.com`           | `127.0.0.1:8080` | WebSocket upgrade on `/api/v1/gateway` and `/api/v1/rendezvous`; refuse `/api/internal/` |
+| brand host names             | `127.0.0.1:8080` | the same (one certificate per name, or one with all names)                               |
+| `id.chat.example.com`        | `127.0.0.1:8180` | only `/realms/`, `/resources/`, `/robots.txt` (the admin console stays private)          |
+| `s3.chat.example.com`        | `127.0.0.1:3900` | `Host` unchanged, no body size limit, CORS for the web client's origins                  |
+| `cal.chat.example.com`       | `127.0.0.1:5232` | CalCraft only                                                                            |
+| `glitchtip.chat.example.com` | `127.0.0.1:8090` | GlitchTip only; request bodies up to 100 MB (crash reports, debug files)                 |
+| `sfu.chat.example.com`       | – (not proxied)  | only a certificate; the SFU itself answers on **udp/3478**                               |
 
 With the integration bridge (`teamcraft_bridge_enabled`), `chat.example.com` also sends `/hooks/` and
 `/ingest/` to `127.0.0.1:8088`; `/ingest/` unbuffered, without a body size limit and with a long read

@@ -1,0 +1,7 @@
+# Managed by Ansible (teamcraft-deploy, role glitchtip): Plesk with nginx in front of Apache.
+# Websites & Domains > {{ glitchtip_hostname }} > Apache & nginx Settings > "Additional nginx directives":
+# paste everything below. Works with "Proxy mode" on or off: the catch-all is a regex location, which wins
+# over Plesk's own "location /". Turn off "Serve static files directly by nginx" for this domain.
+# docs/components/glitchtip.md
+{% set glitchtip_proxy_plesk = true %}
+{% include 'proxy/_nginx.j2' %}

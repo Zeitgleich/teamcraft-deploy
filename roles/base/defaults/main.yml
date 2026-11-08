@@ -65,3 +65,10 @@ base_generated_secrets:
   # optional OpenRouter key (notetaker_openrouter_api_key) can't be generated: they go in the sops file.
   - {name: notetaker_store_key, kind: base64url32}
   - {name: notetaker_passphrase, kind: hex}
+  # GlitchTip (glitchtip_enabled): Django's secret key, its database and Valkey passwords, and the
+  # password of the superuser the playbook creates. Its mail URL (glitchtip_email_url) and S3 keys
+  # (glitchtip_s3_access_key, glitchtip_s3_secret_key) can't be generated: they go in the sops file.
+  - {name: glitchtip_secret_key, kind: hex}
+  - {name: glitchtip_db_password, kind: hex}
+  - {name: glitchtip_valkey_password, kind: hex}
+  - {name: glitchtip_admin_password, kind: hex}

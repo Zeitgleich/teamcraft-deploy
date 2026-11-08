@@ -13,6 +13,7 @@
 | [push-gateway.md](push-gateway.md)               | `push_gateway`          | off, own host, for app publishers            |
 | [mail.md](mail.md)                               | (server settings)       | off                                          |
 | [calcraft.md](calcraft.md)                       | `calcraft`              | off                                          |
+| [glitchtip.md](glitchtip.md)                     | `glitchtip`             | off, error tracking for crash reports        |
 | [branding.md](branding.md)                       | server, Caddy, Keycloak | one built-in brand                           |
 | [../backups.md](../backups.md)                   | `backups`               | on                                           |
 

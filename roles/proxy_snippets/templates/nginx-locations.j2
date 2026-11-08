@@ -120,5 +120,12 @@
 {{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
 {{ i }}    client_max_body_size 16m;
 {{ i }}}
+{% elif kind == 'glitchtip' %}
+{{ i }}# Crash reports (envelopes, minidumps) and debug file uploads.
+{{ i }}location {{ catch_all }} {
+{{ i }}    proxy_pass {{ upstream }};
+{{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
+{{ i }}    client_max_body_size 100m;
+{{ i }}}
 {% endif %}
 {% endmacro %}

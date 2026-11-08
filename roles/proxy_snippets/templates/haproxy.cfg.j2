@@ -45,6 +45,10 @@ frontend https
 {% if calcraft_enabled %}
     use_backend teamcraft_calcraft if { req.hdr(host),host_only -i {{ calcraft_hostname }} }
 {% endif %}
+{% if glitchtip_enabled %}
+    # Error tracking (GlitchTip).
+    use_backend teamcraft_glitchtip if { req.hdr(host),host_only -i {{ glitchtip_hostname }} }
+{% endif %}
 
 backend teamcraft_server
     mode http
@@ -77,4 +81,10 @@ backend teamcraft_s3
 backend teamcraft_calcraft
     mode http
     server calcraft {{ teamcraft_upstream_host }}:{{ teamcraft_ports.calcraft }}
+{% endif %}
+{% if glitchtip_enabled %}
+
+backend teamcraft_glitchtip
+    mode http
+    server glitchtip {{ teamcraft_upstream_host }}:{{ teamcraft_ports.glitchtip }}
 {% endif %}

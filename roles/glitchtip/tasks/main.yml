@@ -1,0 +1,39 @@
+- name: Install
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [setup-all, install-all, setup-glitchtip, install-glitchtip]
+  when: glitchtip_enabled
+  tags: [setup-all, install-all, setup-glitchtip, install-glitchtip]
+
+- name: Uninstall
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_remove
+    apply:
+      tags: [setup-all, setup-glitchtip]
+  vars:
+    base_service_name: "{{ glitchtip_unit }}"
+    base_service_user: tc-glitchtip
+  loop: [glitchtip-worker, glitchtip-web, glitchtip-valkey]
+  loop_control:
+    loop_var: glitchtip_unit
+  when: not glitchtip_enabled
+  tags: [setup-all, setup-glitchtip]
+
+# service_remove looked the user up (ansible_facts.getent_passwd); without it there is nothing to stop.
+- name: Uninstall the SSO role sync timer
+  ansible.builtin.systemd_service:
+    name: glitchtip-sso-role-sync.timer
+    state: stopped
+    enabled: false
+    scope: user
+  become: true
+  become_user: tc-glitchtip
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ ansible_facts.getent_passwd['tc-glitchtip'][1] }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ ansible_facts.getent_passwd['tc-glitchtip'][1] }}/bus"
+  when: not glitchtip_enabled and (ansible_facts.getent_passwd['tc-glitchtip'] | default(none)) is not none
+  # Never installed unless a claim was set once.
+  failed_when: false
+  tags: [setup-all, setup-glitchtip]

@@ -76,6 +76,11 @@
     RewriteEngine On
     RewriteCond %{REQUEST_METHOD} =OPTIONS
     RewriteRule ^ - [R=204,L]
+{% elif kind == 'glitchtip' %}
+    # Crash reports (envelopes, minidumps) and debug file uploads.
+    ProxyPass / {{ upstream }}/
+    ProxyPassReverse / {{ upstream }}/
+    LimitRequestBody 104857600
 {% else %}
     ProxyPass / {{ upstream }}/
     ProxyPassReverse / {{ upstream }}/

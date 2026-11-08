@@ -80,3 +80,15 @@
 	reverse_proxy {{ teamcraft_upstream_host }}:{{ teamcraft_ports.calcraft }}
 }
 {% endif %}
+{% if glitchtip_enabled %}
+
+# Error tracking (GlitchTip): the apps send crash reports here, admins use its web UI.
+{{ glitchtip_hostname }} {
+	import tls
+	encode zstd gzip
+	request_body {
+		max_size 100MB
+	}
+	reverse_proxy {{ teamcraft_upstream_host }}:{{ teamcraft_ports.glitchtip }}
+}
+{% endif %}

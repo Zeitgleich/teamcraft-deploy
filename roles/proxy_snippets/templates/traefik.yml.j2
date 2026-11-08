@@ -60,6 +60,15 @@ http:
       tls:
         certResolver: letsencrypt
 {% endif %}
+{% if glitchtip_enabled %}
+    # Error tracking (GlitchTip): crash reports of the apps, its web UI.
+    teamcraft-glitchtip:
+      rule: "Host(`{{ glitchtip_hostname }}`)"
+      entryPoints: [websecure]
+      service: teamcraft-glitchtip
+      tls:
+        certResolver: letsencrypt
+{% endif %}
 {% if teamcraft_sfu_enabled %}
     # Only for the certificate of {{ teamcraft_sfu_hostname }}, which the SFU uses on udp/{{ teamcraft_ports.sfu }} (export it
     # from Traefik's acme.json, docs/proxies/traefik.md).
@@ -118,4 +127,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.calcraft }}"
+{% endif %}
+{% if glitchtip_enabled %}
+    teamcraft-glitchtip:
+      loadBalancer:
+        servers:
+          - url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.glitchtip }}"
 {% endif %}

@@ -11,7 +11,7 @@ teamcraft_image_registry: ghcr.io/zeitgleich
 # but the SFU's UDP port and writes ready-made proxy configurations to teamcraft_proxy_snippets_dir
 # (docs/reverse-proxy.md).
 caddy_enabled: true
-# The loopback address the proxied services (server, Keycloak, Garage's S3 API, CalCraft) listen on and
+# The loopback address the proxied services (server, Keycloak, Garage's S3 API, CalCraft, GlitchTip) listen on and
 # are reached at: 127.0.0.1 or ::1. One address: each service binds a single socket.
 teamcraft_upstream_address: 127.0.0.1
 # The same as it goes into URLs and host:port pairs ([::1] for IPv6).
@@ -48,6 +48,8 @@ teamcraft_sfu_hostname: "sfu.{{ teamcraft_domain }}"
 keycloak_hostname: "id.{{ teamcraft_domain }}"
 garage_hostname: "s3.{{ teamcraft_domain }}"
 calcraft_hostname: "cal.{{ teamcraft_domain }}"
+# Optional error tracking for the apps' crash reports (glitchtip_enabled, docs/components/glitchtip.md).
+glitchtip_hostname: "glitchtip.{{ teamcraft_domain }}"
 
 # Identity provider: bundled Keycloak unless disabled.
 keycloak_enabled: true
@@ -102,6 +104,8 @@ teamcraft_port_defaults:
   garage_admin: 3903
   calcraft: 5232
   bridge: 8088
+  glitchtip: 8090
+  glitchtip_valkey: 6390
 # Set only the ones you change, e.g. teamcraft_ports: {postgres: 13100, server: 13101}: the base role
 # fills in the rest from teamcraft_port_defaults.
 teamcraft_ports: "{{ teamcraft_port_defaults }}"
@@ -117,6 +121,9 @@ teamcraft_services:
   - {name: teamcraft-bridge, user: tc-bridge, enabled: "{{ teamcraft_bridge_enabled }}"}
   - {name: teamcraft-notetaker, user: tc-notetaker, enabled: "{{ teamcraft_notetaker_enabled }}"}
   - {name: calcraft, user: tc-calcraft, enabled: "{{ calcraft_enabled }}"}
+  - {name: glitchtip-valkey, user: tc-glitchtip, enabled: "{{ glitchtip_enabled }}"}
+  - {name: glitchtip-web, user: tc-glitchtip, enabled: "{{ glitchtip_enabled }}"}
+  - {name: glitchtip-worker, user: tc-glitchtip, enabled: "{{ glitchtip_enabled }}"}
 
 # Shared directories
 teamcraft_base_dir: /srv/teamcraft
