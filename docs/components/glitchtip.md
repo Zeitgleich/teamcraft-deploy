@@ -83,12 +83,12 @@ Then `just install-all` (or `ansible-playbook -i inventory/hosts setup.yml --lim
 --tags=install-all,start`). The playbook writes the configuration for the web server in front to
 `/srv/teamcraft/reverse-proxy/glitchtip/` on the host:
 
-| File                      | For                                                             |
-|---------------------------|-----------------------------------------------------------------|
-| `plesk-apache-https.conf` | Plesk with Apache only: "Additional directives for HTTPS"       |
-| `plesk-nginx.conf`        | Plesk with nginx in front: "Additional nginx directives"        |
-| `apache.conf`             | a plain Apache 2.4 virtual host                                 |
-| `nginx.conf`              | a plain nginx server block                                      |
+| File                      | For                                                       |
+|---------------------------|-----------------------------------------------------------|
+| `plesk-apache-https.conf` | Plesk with Apache only: "Additional directives for HTTPS" |
+| `plesk-nginx.conf`        | Plesk with nginx in front: "Additional nginx directives"  |
+| `apache.conf`             | a plain Apache 2.4 virtual host                           |
+| `nginx.conf`              | a plain nginx server block                                |
 
 **Plesk (Apache only):**
 
@@ -117,6 +117,68 @@ the backups role is for the chat server and stays off here. Continue with the fi
 5. Invite the people who should read the reports (Organization → Members). Invitations go out by
    e-mail, so set `glitchtip_email_url` first (without it, mail only goes to the log).
 
+## Sign-in with SSO and roles
+
+GlitchTip lets an organization use its own OpenID Connect provider (Keycloak, Entra ID, Okta, any other):
+people who sign in through it join the organization automatically, as **members**. GlitchTip maps no
+roles from the provider; the playbook can, from a claim (below).
+
+1. **At the identity provider:** a confidential OIDC client for GlitchTip (e.g. client ID `glitchtip`),
+   with the redirect URI `https://glitchtip.chat.example.com/accounts/*` (the exact callback is
+   `https://glitchtip.chat.example.com/accounts/oidc/<provider id>/login/callback/`, the provider ID
+   GlitchTip shows after step 2; use it where the provider doesn't take wildcards). For roles, a claim
+   with the user's GlitchTip roles in the ID token and the userinfo response, e.g. `glitchtip_roles`
+   with a list like `["admin"]` (Keycloak: client roles with a "User Client Role" mapper, token claim
+   name `glitchtip_roles`, multivalued, added to ID token and userinfo).
+2. **In GlitchTip,** as an owner or manager: Organization settings → **SSO** → add an OpenID Connect
+   provider with the issuer URL (e.g. `https://id.example.com/realms/example`), client ID and secret.
+   The organization's own login page (`https://glitchtip.chat.example.com/login/<organization slug>`)
+   then offers it. The same from the shell, as `tc-glitchtip` on the host:
+
+   ```sh
+   podman exec teamcraft-glitchtip-web ./manage.py shell -c '
+   from allauth.socialaccount.models import SocialApp
+   from apps.organizations_ext.models import Organization, OrganizationSocialApp
+   org = Organization.objects.get(slug="example")
+   app = SocialApp.objects.create(provider="openid_connect", provider_id="example-sso", name="Example SSO",
+       client_id="glitchtip", secret="<client secret>",
+       settings={"server_url": "https://id.example.com/realms/example"})
+   OrganizationSocialApp.objects.create(organization=org, social_app=app)'
+   ```
+
+3. **New people:** with registration closed, GlitchTip only lets people sign in through SSO who
+   already have an account. To let the provider decide who gets in, allow sign-up through SSO apps
+   only:
+
+   ```yaml
+   glitchtip_extra_environment:
+     ENABLE_SOCIAL_APPS_USER_REGISTRATION: "true"
+   ```
+
+4. **Roles from the claim:**
+
+   ```yaml
+   glitchtip_sso_role_claim: glitchtip_roles
+   # claim value -> owner, manager, admin or member (this is the default)
+   glitchtip_sso_role_map: {owner: owner, manager: manager, admin: admin, member: member}
+   glitchtip_sso_remove_without_role: true
+   glitchtip_sso_role_sync_interval: 5min
+   ```
+
+   A timer of `tc-glitchtip` (`glitchtip-sso-role-sync.timer`) then sets, every interval, the role of
+   each person who signed in through an organization's SSO app: the highest role their claim values
+   map to. People with an SSO account but no organization membership are added when they have a role;
+   members whose claim maps to no role are removed (with `glitchtip_sso_remove_without_role`). It never
+   touches local accounts (the superuser) or accounts of other providers, and never demotes or removes
+   an organization's last owner. Changes go to the journal (`journalctl --user -u
+   glitchtip-sso-role-sync` as `tc-glitchtip`), by user ID.
+
+   **The claim is read as it was at the person's last SSO sign-in**: GlitchTip stores the claims then
+   (in `SocialAccount.extra_data`, `userinfo` first, then `id_token`). A role changed at the provider
+   applies after that person's next sign-in through SSO and the next timer run; to take a role away at
+   once, remove the member in GlitchTip as well (or disable the person at the provider, which ends their
+   GlitchTip sessions only when they expire).
+
 ## Settings
 
 All in `roles/glitchtip/defaults/main.yml`; the ones you are most likely to change:
@@ -134,6 +196,7 @@ All in `roles/glitchtip/defaults/main.yml`; the ones you are most likely to chan
 | `glitchtip_web_memory` / `_worker_memory` / `_valkey_memory` | `512m` / `512m` / `128m`       | container memory limits                                                                                          |
 | `glitchtip_uptime_enabled` / `glitchtip_logs_enabled`        | `false`                        | GlitchTip's uptime monitoring and log ingestion, not needed for crash reports                                    |
 | `glitchtip_s3_endpoint`                                      | –                              | keep uploaded debug files in an S3 bucket (`glitchtip_s3_bucket`) instead of the volume                          |
+| `glitchtip_sso_role_claim`                                   | –                              | claim with the users' roles; set to sync organization roles from SSO (see above)                                 |
 | `glitchtip_extra_environment`                                | `{}`                           | more of [GlitchTip's settings](https://glitchtip.com/documentation/install), no secrets                          |
 
 Debug files (symbols, source maps) are uploaded with `sentry-cli` or GlitchTip's own tooling to the

@@ -1,0 +1,8 @@
+# Managed by Ansible (teamcraft-deploy, role glitchtip).
+[Unit]
+Description=GlitchTip: organization roles from the SSO role claim
+After=glitchtip-web.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/tc-glitchtip/config/glitchtip-sso-role-sync.sh

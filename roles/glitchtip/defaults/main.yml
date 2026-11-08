@@ -54,6 +54,23 @@ glitchtip_s3_bucket: glitchtip
 glitchtip_s3_access_key: "{{ base_secrets.glitchtip_s3_access_key | default('') }}"
 glitchtip_s3_secret_key: "{{ base_secrets.glitchtip_s3_secret_key | default('') }}"
 
+# Organization roles from the identity provider (docs/components/glitchtip.md, "Sign-in with SSO and
+# roles"). GlitchTip adds people who sign in through an organization's SSO app as members and maps no
+# roles. With a claim name here, a timer of tc-glitchtip sets each SSO user's role in that organization
+# from the claim (a list or a string of values), as the claims were at the user's last SSO sign-in. Empty:
+# no sync.
+glitchtip_sso_role_claim: ""
+# Claim value -> GlitchTip organization role (owner, manager, admin, member); the highest one wins.
+glitchtip_sso_role_map:
+  owner: owner
+  manager: manager
+  admin: admin
+  member: member
+# true: remove SSO users whose claim maps to no role from the organization (never its last owner).
+glitchtip_sso_remove_without_role: true
+# systemd time span between two runs.
+glitchtip_sso_role_sync_interval: 5min
+
 # Extra environment of the web and worker containers (install docs: https://glitchtip.com/documentation/install),
 # e.g. {LOG_LEVEL: INFO}. Not for secrets.
 glitchtip_extra_environment: {}

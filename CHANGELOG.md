@@ -33,6 +33,11 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
   `/srv/teamcraft/reverse-proxy/glitchtip/`. It can share a machine with the push gateway under a second
   inventory name; ports are `teamcraft_ports.glitchtip`, `glitchtip_valkey` and `postgres`.
   `DRY_RUN_CRASH_REPORTS=1 test/gateway-dry-run.sh` tests it next to the push gateway.
+- GlitchTip organization roles from the identity provider: with `glitchtip_sso_role_claim` (e.g.
+  `glitchtip_roles`), a timer (`glitchtip_sso_role_sync_interval`, 5 minutes) sets the role of everyone
+  who signs in through an organization's SSO app from that claim (`glitchtip_sso_role_map`), and removes
+  members without one (`glitchtip_sso_remove_without_role`). Local accounts and an organization's last
+  owner are never touched. Roles follow the claim as of the person's last SSO sign-in.
 
 - The SFU role raises the host's `net.core.rmem_max` to at least 4 MiB (`teamcraft_sfu_rmem_max_bytes`,
   in `/etc/sysctl.d/60-teamcraft.conf`), so the SFU gets the UDP receive buffer it asks for and a big

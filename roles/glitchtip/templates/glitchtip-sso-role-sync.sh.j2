@@ -1,0 +1,9 @@
+#!/bin/sh
+# Managed by Ansible (teamcraft-deploy, role glitchtip): organization roles from the SSO role claim
+# (glitchtip_sso_role_claim). Runs the script next to this one inside GlitchTip's web container.
+set -eu
+exec podman exec \
+  -e GLITCHTIP_SSO_ROLE_CLAIM={{ glitchtip_sso_role_claim | quote }} \
+  -e GLITCHTIP_SSO_ROLE_MAP_B64={{ glitchtip_sso_role_map | to_json | b64encode | quote }} \
+  -e GLITCHTIP_SSO_REMOVE_WITHOUT_ROLE={{ glitchtip_sso_remove_without_role | bool | lower }} \
+  teamcraft-glitchtip-web ./manage.py shell -c "$(cat /home/tc-glitchtip/config/sso-role-sync.py)"
