@@ -2,11 +2,12 @@
   ansible.builtin.assert:
     that:
       - postgres_enabled
+      - glitchtip_hostname | length > 0
       - "'@' in glitchtip_admin_email"
       - glitchtip_retention_days | int >= 1
       - glitchtip_s3_endpoint | length == 0 or (glitchtip_s3_access_key | length > 0 and glitchtip_s3_secret_key | length > 0)
     fail_msg: >-
-      glitchtip_enabled needs the bundled Postgres (postgres_enabled), an e-mail address in
+      glitchtip_enabled needs the bundled Postgres (postgres_enabled), glitchtip_hostname, an e-mail address in
       glitchtip_admin_email, glitchtip_retention_days of at least 1, and with glitchtip_s3_endpoint the keys
       glitchtip_s3_access_key / glitchtip_s3_secret_key in the sops file (docs/components/glitchtip.md).
     quiet: true
@@ -84,3 +85,25 @@
   register: glitchtip_superuser
   changed_when: "'created' in glitchtip_superuser.stdout"
   no_log: true
+
+# On a host of its own, the configurations for the web server already in front (the chat server's are
+# written by the proxy_snippets role).
+- name: Proxy configurations
+  when: glitchtip_standalone
+  block:
+    - name: Proxy configuration directory
+      ansible.builtin.file:
+        path: "{{ teamcraft_proxy_snippets_dir }}/glitchtip"
+        state: directory
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Proxy configurations (Plesk, Apache, nginx)
+      ansible.builtin.template:
+        src: "proxy/{{ item }}.j2"
+        dest: "{{ teamcraft_proxy_snippets_dir }}/glitchtip/{{ item }}"
+        owner: root
+        group: root
+        mode: "0640"
+      loop: [README.txt, plesk-apache-https.conf, plesk-nginx.conf, apache.conf, nginx.conf]

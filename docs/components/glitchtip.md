@@ -40,6 +40,69 @@ nobody else can be first, the playbook creates a superuser on the first run: `gl
 on the server (root only; or `glitchtip_admin_password` in your sops file). Changing it later in
 GlitchTip is fine: the playbook only creates the user when it is missing.
 
+## On its own host
+
+GlitchTip can also run on a host without the chat server, behind the web server that host already
+runs (Plesk, Apache, nginx), for example the push gateway's machine. It then has its own Postgres
+(only the database `glitchtip`) and nothing of TeamCraft; the play "Set up crash reports (GlitchTip) on
+its own host" in `setup.yml` installs it for the inventory group `[teamcraft_crash_reports]`
+(`group_vars/teamcraft_crash_reports.yml` sets the rest). There is no bundled Caddy in this mode.
+
+`inventory/hosts`:
+
+```ini
+[teamcraft_crash_reports]
+crashlogs.example.com ansible_host=203.0.113.20 ansible_user=deploy
+```
+
+On a machine that is already in the inventory under another name (the push gateway's
+`gateway.example.com`), add it **under a second name with the same `ansible_host`**, as above; don't put
+the gateway's name into both groups (their group variables collide). The two names share
+`/srv/teamcraft` (each writes its own subdirectory of `reverse-proxy/`), the secrets directory (only the
+GlitchTip play uses it) and `/etc/sysctl.d/60-teamcraft.conf`: keep `base_firewall_enabled` and
+`base_unprivileged_web_ports` the same for both (behind Plesk: `false` and `false`). Users and units don't
+overlap (`tc-gateway` / `tc-db`, `tc-glitchtip`).
+
+`inventory/host_vars/crashlogs.example.com/vars.yml`:
+
+```yaml
+glitchtip_hostname: crashlogs.example.com
+glitchtip_admin_email: ops@example.com
+# Loopback ports; move any that other software on the host uses (the preflight check says which).
+teamcraft_ports: {glitchtip: 18092, glitchtip_valkey: 18093, postgres: 18094}
+# The firewall belongs to Plesk (or Docker).
+base_firewall_enabled: false
+```
+
+The secrets are generated on the host on the first run (`/srv/teamcraft/secrets`): `postgres_password`,
+`glitchtip_secret_key`, `glitchtip_db_password`, `glitchtip_valkey_password` and
+`glitchtip_admin_password` (the superuser's). Only `glitchtip_email_url` (mail) and the optional S3 keys
+can't be generated: put them in a sops file (`base_secrets_sops_file`, [../configuring.md](../configuring.md)).
+
+Then `just install-all` (or `ansible-playbook -i inventory/hosts setup.yml --limit crashlogs.example.com
+--tags=install-all,start`). The playbook writes the configuration for the web server in front to
+`/srv/teamcraft/reverse-proxy/glitchtip/` on the host:
+
+| File                      | For                                                             |
+|---------------------------|-----------------------------------------------------------------|
+| `plesk-apache-https.conf` | Plesk with Apache only: "Additional directives for HTTPS"       |
+| `plesk-nginx.conf`        | Plesk with nginx in front: "Additional nginx directives"        |
+| `apache.conf`             | a plain Apache 2.4 virtual host                                 |
+| `nginx.conf`              | a plain nginx server block                                      |
+
+**Plesk (Apache only):**
+
+1. Websites & Domains → add the domain or subdomain `crashlogs.example.com` (A and AAAA records to the
+   host), and get its certificate (SSL/TLS Certificates → Let's Encrypt).
+2. Tools & Settings → Apache Web Server: the modules `proxy`, `proxy_http` and `headers` are on.
+3. Websites & Domains → `crashlogs.example.com` → Apache & nginx Settings → **Additional directives for
+   HTTPS**: paste the content of `/srv/teamcraft/reverse-proxy/glitchtip/plesk-apache-https.conf` (as
+   root: `cat` it on the host). Leave "Additional directives for HTTP" empty; Plesk redirects to HTTPS.
+4. `just self-check` checks `https://crashlogs.example.com/_health/` and the units.
+
+Backups: the nightly dump of `glitchtip` goes to `/srv/teamcraft/backups/postgres/`; the off-site copy of
+the backups role is for the chat server and stays off here. Continue with the first organization below.
+
 ## First organization, project and the DSN
 
 1. Sign in at `https://glitchtip.chat.example.com` with that e-mail address and password, and change
@@ -97,6 +160,6 @@ keep `glitchtip_retention_days` short, and give access only to the people who fi
   volumes) stays ([../uninstalling.md](../uninstalling.md)). To delete it for good: drop the database
   `glitchtip` and the role of the same name in Postgres, and remove the user `tc-glitchtip`.
 
-Covered by the dry run with `DRY_RUN_GLITCHTIP=1` (`test/dry-run.sh`): the units start, the health
-endpoint answers through the proxy over IPv4 and IPv6, the superuser exists, and the ports stay
-closed from outside. S3 storage of debug files is not covered.
+Dry runs: `DRY_RUN_GLITCHTIP=1 test/dry-run.sh` on a chat server, and `DRY_RUN_CRASH_REPORTS=1
+test/gateway-dry-run.sh` on its own host next to the push gateway, behind Apache with the generated
+Plesk directives. S3 storage of debug files is not covered.

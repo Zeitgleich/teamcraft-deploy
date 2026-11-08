@@ -1,0 +1,12 @@
+# Managed by Ansible (teamcraft-deploy, role glitchtip): GlitchTip behind nginx.
+# /etc/nginx/conf.d/glitchtip.conf; nginx -t && systemctl reload nginx. Certificate: e.g. certbot.
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name {{ glitchtip_hostname }};
+    ssl_certificate {{ teamcraft_proxy_certificate_path | default('/etc/letsencrypt/live/{host}/fullchain.pem') | replace('{host}', glitchtip_hostname) }};
+    ssl_certificate_key {{ teamcraft_proxy_certificate_key_path | default('/etc/letsencrypt/live/{host}/privkey.pem') | replace('{host}', glitchtip_hostname) }};
+
+    {% filter indent(4) %}{% include 'proxy/_nginx.j2' %}{% endfilter %}
+
+}

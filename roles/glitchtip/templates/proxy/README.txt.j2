@@ -1,0 +1,13 @@
+Managed by Ansible (teamcraft-deploy, role glitchtip).
+
+GlitchTip runs here on its own (group teamcraft_crash_reports), behind the web server already on this
+host. It forwards https://{{ glitchtip_hostname }} to http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.glitchtip }}.
+
+  plesk-apache-https.conf  Plesk, Apache only: "Additional directives for HTTPS" of the domain
+  plesk-nginx.conf         Plesk, nginx in front: "Additional nginx directives"
+  apache.conf              plain Apache 2.4: a virtual host
+  nginx.conf               plain nginx: a server block
+
+The proxy must: terminate TLS for {{ glitchtip_hostname }}, pass Host unchanged, set X-Forwarded-For and
+X-Forwarded-Proto, accept request bodies up to 100 MB. Guide: docs/components/glitchtip.md in
+teamcraft-deploy.

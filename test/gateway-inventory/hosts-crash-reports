@@ -1,0 +1,7 @@
+# test/gateway-dry-run.sh with DRY_RUN_CRASH_REPORTS=1: the push gateway and GlitchTip (crash reports) on
+# one machine, as two inventory names with the same address (docs/components/glitchtip.md).
+[teamcraft_push_gateways]
+push-gw.172-31-251-10.sslip.io ansible_host=172.31.251.10 ansible_user=deploy ansible_ssh_common_args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+[teamcraft_crash_reports]
+crashlogs.172-31-251-10.sslip.io ansible_host=172.31.251.10 ansible_user=deploy ansible_ssh_common_args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"

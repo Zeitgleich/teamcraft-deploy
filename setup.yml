@@ -34,3 +34,19 @@
   become: true
   roles:
     - role: push_gateway
+
+# Optional, on a host of its own (docs/components/glitchtip.md, "On its own host"): GlitchTip with its own
+# Postgres for the apps' crash reports, behind the web server the host already runs. Put the host in the
+# group [teamcraft_crash_reports]; on the push gateway's machine under a second inventory name.
+- name: Set up crash reports (GlitchTip) on its own host
+  hosts: teamcraft_crash_reports
+  become: true
+  roles:
+    - role: base
+      tags: [always]
+    - role: postgres
+    - role: glitchtip
+    - role: backups
+    # Their tasks carry their own tags (start, stop, self-check).
+    - role: services
+    - role: self_check

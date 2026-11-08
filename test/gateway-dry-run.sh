@@ -13,6 +13,11 @@
 #
 # Needs: docker (privileged target, nested rootless podman), podman, ansible-playbook, ssh, curl, openssl
 # and a teamcraft-push-gateway checkout in $GATEWAY_REPO (default ../teamcraft-push-gateway).
+# DRY_RUN_CRASH_REPORTS=1 also puts GlitchTip on the machine under a second inventory name (group
+# teamcraft_crash_reports, test/gateway-inventory/hosts-crash-reports), behind the same Apache, with the
+# gateway and GlitchTip on moved ports while something else holds 8090/8091 (Docker, on the real host).
+# DRY_RUN_BASE_IMAGE picks the target's distribution (default Ubuntu 24.04; debian:trixie has Podman 5,
+# which also runs on machines with a cgroup v1 hierarchy).
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -30,13 +35,22 @@ target_ip6=fd00:7c:fb::10
 target=tc-gwdryrun-target
 registry=tc-gwdryrun-registry
 host=push-gw.172-31-251-10.sslip.io
+crash_host=crashlogs.172-31-251-10.sslip.io
+crash="${DRY_RUN_CRASH_REPORTS:-}"
+base_image="${DRY_RUN_BASE_IMAGE:-docker.io/library/ubuntu:24.04}"
 
 step() { printf '\n==> %s\n' "$*"; }
 
 playbook() {
+  local inventory="$here/gateway-inventory/hosts"
+  local -a moved=()
+  if [ -n "$crash" ]; then
+    inventory="$here/gateway-inventory/hosts-crash-reports"
+    moved=(-e push_gateway_port=18090 -e push_gateway_health_port=18091)
+  fi
   ANSIBLE_CONFIG="$repo/ansible.cfg" ANSIBLE_ROLES_PATH="$repo/roles" ansible-playbook \
-    -i "$here/gateway-inventory/hosts" "$repo/setup.yml" --private-key "$state/id_ed25519" \
-    -e "push_gateway_image=$(cat "$state/gateway.ref")" -e "@$state/credentials.yml" "$@"
+    -i "$inventory" "$repo/setup.yml" --private-key "$state/id_ed25519" \
+    -e "push_gateway_image=$(cat "$state/gateway.ref")" -e "@$state/credentials.yml" "${moved[@]}" "$@"
 }
 
 up() {
@@ -48,8 +62,8 @@ up() {
   step "Registry"
   docker container inspect "$registry" >/dev/null 2>&1 \
     || docker run -d --name "$registry" --network "$network" --ip "$registry_ip" docker.io/library/registry:3
-  step "Target (Ubuntu 24.04)"
-  docker build -q -t teamcraft-gateway-dry-run-target:local --build-arg BASE_IMAGE=docker.io/library/ubuntu:24.04 \
+  step "Target ($base_image)"
+  docker build -q -t teamcraft-gateway-dry-run-target:local --build-arg BASE_IMAGE="$base_image" \
     -f "$here/target.Containerfile" "$here"
   if ! docker container inspect "$target" >/dev/null 2>&1; then
     docker run -d --name "$target" --hostname gateway-dry-run --privileged --cgroupns=private \
@@ -74,7 +88,7 @@ up() {
       -addext "basicConstraints=critical,CA:TRUE" -addext "keyUsage=critical,keyCertSign,cRLSign" \
       -keyout "$state/test-ca.key" -out "$state/test-ca.crt" 2>/dev/null
     openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 30 -subj "/CN=$host" \
-      -addext "subjectAltName=DNS:$host" -addext "basicConstraints=critical,CA:FALSE" \
+      -addext "subjectAltName=DNS:$host,DNS:$crash_host" -addext "basicConstraints=critical,CA:FALSE" \
       -addext "keyUsage=critical,digitalSignature" -addext "extendedKeyUsage=serverAuth" \
       -CA "$state/test-ca.crt" -CAkey "$state/test-ca.key" -keyout "$state/web.key" -out "$state/web.crt" 2>/dev/null
     # An APNs key has this form (a P-256 key in PKCS#8); nothing is ever sent with it.
@@ -97,6 +111,20 @@ up() {
     IncludeOptional /srv/teamcraft/reverse-proxy/push-gateway/plesk-apache-https.conf
 </VirtualHost>
 EOF
+  if [ -n "$crash" ]; then
+    docker exec -i "$target" sh -c 'cat > /etc/apache2/sites-available/crashlogs.conf' <<EOF
+<VirtualHost *:443>
+    ServerName $crash_host
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/gateway-test/cert.pem
+    SSLCertificateKeyFile /etc/ssl/gateway-test/key.pem
+    IncludeOptional /srv/teamcraft/reverse-proxy/glitchtip/plesk-apache-https.conf
+</VirtualHost>
+EOF
+    docker exec "$target" a2ensite -q crashlogs
+    step "Something else on 8090/8091, as Docker on the real host"
+    docker exec "$target" sh -c 'for p in 8090 8091; do systemd-run --unit "other-$p" python3 -m http.server --bind 127.0.0.1 "$p" >/dev/null; done'
+  fi
   docker exec "$target" sh -c 'a2enmod -q ssl proxy proxy_http headers >/dev/null && a2ensite -q push-gw >/dev/null && apache2ctl configtest && systemctl restart apache2'
 }
 
@@ -112,7 +140,7 @@ image() {
 deploy() {
   # Podman 4.9 can't run its services where the host has a cgroup v1 hierarchy next to v2 (the
   # playbook's preflight says so); a container target inherits the host's.
-  if grep -qv '^0::' /proc/self/cgroup; then
+  if [[ "$base_image" == *ubuntu* ]] && grep -qv '^0::' /proc/self/cgroup; then
     echo "this machine mounts a cgroup v1 hierarchy ($(grep -v '^0::' /proc/self/cgroup | tr '\n' ' ')): Podman 4.9 in the target can't run services; use a VM or another machine" >&2
     return 1
   fi
@@ -133,7 +161,11 @@ deploy() {
   docker exec "$target" sh -c 'apache2ctl configtest && systemctl reload apache2'
   step "Playbook again (idempotence: nothing may change)"
   playbook --tags=setup-all,start | tee "$state/second-run.log"
-  grep -Eq 'changed=0 +unreachable=0 +failed=0' "$state/second-run.log" || { echo "the second run changed something" >&2; return 1; }
+  # Every host of the recap (two with DRY_RUN_CRASH_REPORTS) must have changed nothing.
+  if ! grep -Eq 'changed=0 +unreachable=0 +failed=0' "$state/second-run.log" \
+      || grep -Eq 'changed=[1-9]|failed=[1-9]' "$state/second-run.log"; then
+    echo "the second run changed something" >&2; return 1
+  fi
 }
 
 verify() {
@@ -153,9 +185,23 @@ verify() {
     check "metrics not public over $ip" sh -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --cacert '$ca' --resolve '$resolve' https://$host/metrics)\" = 404 ]"
   done
   local port
-  for port in 8090 8091; do
+  for port in 8090 8091 18090 18091 18092 18093 18094; do
     check "port $port not reachable from outside" sh -c "! timeout 3 bash -c \"exec 3<>/dev/tcp/$target_ip4/$port\" 2>/dev/null"
   done
+  if [ -n "$crash" ]; then
+    step "Crash reports (GlitchTip) on the same machine"
+    for ip in "$target_ip4" "$target_ip6"; do
+      check "GlitchTip health through Apache over $ip" sh -c "curl -fsS --cacert '$ca' --resolve '$crash_host:443:$ip' https://$crash_host/_health/ | grep -qx ok"
+    done
+    check "GlitchTip registration closed" sh -c "curl -fsS --cacert '$ca' --resolve '$crash_host:443:$target_ip4' https://$crash_host/api/settings/ | grep -q '\"enableUserRegistration\": *false'"
+    check "GlitchTip on its moved port, the other service still on 8090" docker exec "$target" sh -c 'ss -Htln "( sport = :18092 )" | grep -q . && curl -fsS -o /dev/null http://127.0.0.1:8090/'
+    # shellcheck disable=SC2016 # expands inside the target, not here
+    check "only GlitchTip's database" docker exec "$target" sh -c '
+      XDG_RUNTIME_DIR=/run/user/$(id -u tc-db) runuser -u tc-db -- podman exec teamcraft-postgres \
+        psql -U postgres -Atc "select string_agg(datname, chr(32) order by datname) from pg_database where not datistemplate" | grep -qx "glitchtip postgres"'
+    check "backup now (crash reports host)" playbook --limit "$crash_host" --tags=backup
+    check "dump of GlitchTip's database" docker exec "$target" sh -c 'ls /srv/teamcraft/backups/postgres/glitchtip-*.dump'
+  fi
   check "no Caddy, no tc-gwproxy service" docker exec "$target" sh -c '! ss -Htlnp | grep -q caddy'
   check "Apache still owns 80/443" docker exec "$target" sh -c 'ss -Htlnp "( sport = :443 )" | grep -q apache2 && ss -Htlnp "( sport = :80 )" | grep -q apache2'
   # shellcheck disable=SC2016 # expands inside the target, not here
@@ -165,12 +211,17 @@ verify() {
   # that the playbook wrote no ruleset and started no firewall.
   check "firewall left alone" docker exec "$target" sh -c '! grep -qs teamcraft-deploy /etc/nftables.conf && ! systemctl is-active -q nftables'
   check "client address from X-Forwarded-For (gateway config)" docker exec "$target" grep -q 'client_ip_header = "x-forwarded-for"' /home/tc-gateway/config/gateway.toml
-  check "podman from Ubuntu's archive" docker exec "$target" sh -c 'podman --version && dpkg -s podman | grep -q "^Version: 4\."'
+  if [[ "$base_image" == *ubuntu* ]]; then
+    check "podman from Ubuntu's archive" docker exec "$target" sh -c 'podman --version && dpkg -s podman | grep -q "^Version: 4\."'
+  fi
   step "Stop and start"
   check "stop" playbook --tags=stop
   check "gateway stopped (Apache answers 503)" sh -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' --cacert '$ca' --resolve '$host:443:$target_ip4' https://$host/v1/info)\" = 503 ]"
   check "start" playbook --tags=start
   check "gateway back" sh -c "for i in \$(seq 30); do curl -fsS --cacert '$ca' --resolve '$host:443:$target_ip4' https://$host/v1/info && exit 0; sleep 2; done; exit 1"
+  if [ -n "$crash" ]; then
+    check "GlitchTip back" sh -c "for i in \$(seq 60); do curl -fsS --cacert '$ca' --resolve '$crash_host:443:$target_ip4' https://$crash_host/_health/ && exit 0; sleep 2; done; exit 1"
+  fi
   return "$failed"
 }
 

@@ -5,6 +5,10 @@
 # Postgres. Any other Sentry-protocol backend works as well: the apps only know a DSN
 # (docs/components/glitchtip.md).
 glitchtip_enabled: false
+# true on a host that runs only GlitchTip (group teamcraft_crash_reports, set in its group_vars): the role
+# then writes the configurations for the web server in front itself, to
+# teamcraft_proxy_snippets_dir/glitchtip/ (Plesk, Apache, nginx).
+glitchtip_standalone: false
 # https://glitchtip.com/blog/ announces new major versions; read it before moving this.
 glitchtip_image: "docker.io/glitchtip/glitchtip:6.2.6"
 glitchtip_valkey_image: "docker.io/valkey/valkey:9.1.3-alpine3.24"
@@ -23,7 +27,7 @@ glitchtip_web_processes: 1
 # password is the generated secret glitchtip_admin_password (/srv/teamcraft/secrets on the host).
 glitchtip_admin_email: "{{ teamcraft_admin_email }}"
 # Sender of GlitchTip's mail (alerts, invitations, password resets).
-glitchtip_from_email: "{{ teamcraft_admin_email }}"
+glitchtip_from_email: "{{ glitchtip_admin_email }}"
 # Outgoing mail as a URL, e.g. smtp+tls://user:password@mail.example.com:587 (STARTTLS) or
 # smtp+ssl://...:465; URL-encode the password. Holds a password: put it in the sops file as
 # glitchtip_email_url. Empty: mail is only written to the log (consolemail://).

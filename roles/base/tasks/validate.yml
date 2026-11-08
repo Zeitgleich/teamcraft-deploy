@@ -10,6 +10,8 @@
       teamcraft_oidc_issuer / teamcraft_s3_endpoint when the bundled Keycloak / Garage are disabled
       (examples/vars.yml, docs/configuring.md).
     quiet: true
+  # The chat server's settings; a host with only GlitchTip (group teamcraft_crash_reports) has none.
+  when: teamcraft_server_enabled
 
 - name: Debian 13 or Ubuntu 24.04 or newer
   ansible.builtin.assert:
@@ -39,7 +41,7 @@
       teamcraft_brands: exactly one brand with is_default: true, unique ids, every host name in one brand
       only, and teamcraft_domain among them (docs/components/branding.md).
     quiet: true
-  when: teamcraft_brands | length > 0
+  when: teamcraft_server_enabled and teamcraft_brands | length > 0
 
 - name: The SFU has a certificate
   ansible.builtin.assert:

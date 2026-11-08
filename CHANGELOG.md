@@ -27,6 +27,12 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
   the playbook creates a superuser for `glitchtip_admin_email` with a generated password. Events are
   kept for `glitchtip_retention_days` (30). Any other Sentry-protocol backend works as well: TeamCraft
   only needs a DSN (docs/components/glitchtip.md). `DRY_RUN_GLITCHTIP=1` adds it to the dry run.
+- GlitchTip on a host of its own: the play "Set up crash reports (GlitchTip) on its own host" for the new
+  inventory group `[teamcraft_crash_reports]` installs only Postgres (database `glitchtip`) and GlitchTip,
+  behind the web server the host already runs, and writes Plesk, Apache and nginx configurations to
+  `/srv/teamcraft/reverse-proxy/glitchtip/`. It can share a machine with the push gateway under a second
+  inventory name; ports are `teamcraft_ports.glitchtip`, `glitchtip_valkey` and `postgres`.
+  `DRY_RUN_CRASH_REPORTS=1 test/gateway-dry-run.sh` tests it next to the push gateway.
 
 - The SFU role raises the host's `net.core.rmem_max` to at least 4 MiB (`teamcraft_sfu_rmem_max_bytes`,
   in `/etc/sysctl.d/60-teamcraft.conf`), so the SFU gets the UDP receive buffer it asks for and a big

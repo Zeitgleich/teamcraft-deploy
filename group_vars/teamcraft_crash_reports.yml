@@ -1,0 +1,70 @@
+# A host that runs only GlitchTip for the apps' crash reports, with its own Postgres, behind a web server
+# the host already runs (Plesk, Apache, nginx): no TeamCraft server, SFU, Keycloak, Garage or Caddy
+# (docs/components/glitchtip.md, "On its own host"). Settings of the host go in
+# inventory/host_vars/<host>/vars.yml: glitchtip_hostname and glitchtip_admin_email at least.
+#
+# On a machine that also runs the push gateway, give it a second inventory name (same ansible_host) in
+# [teamcraft_crash_reports], not the push gateway's: the two groups set some of the same variables.
+
+glitchtip_enabled: true
+# Marks the stand-alone mode: GlitchTip writes its own proxy configurations (no proxy_snippets role here).
+glitchtip_standalone: true
+postgres_enabled: true
+
+# Nothing of the chat server runs here. The shared roles (base, postgres, services, self_check) read
+# these toggles.
+teamcraft_server_enabled: false
+teamcraft_sfu_enabled: false
+teamcraft_bridge_enabled: false
+teamcraft_notetaker_enabled: false
+keycloak_enabled: false
+garage_enabled: false
+calcraft_enabled: false
+caddy_enabled: false
+teamcraft_admin_email: ""
+# Set in host_vars: the public name (an existing vhost of the web server in front) and the superuser.
+glitchtip_hostname: ""
+
+teamcraft_base_dir: /srv/teamcraft
+teamcraft_backup_dir: "{{ teamcraft_base_dir }}/backups"
+teamcraft_proxy_snippets_dir: "{{ teamcraft_base_dir }}/reverse-proxy"
+teamcraft_preflight_enabled: true
+
+# The loopback address GlitchTip's web unit listens on and the proxy forwards to: 127.0.0.1 or ::1.
+teamcraft_upstream_address: 127.0.0.1
+teamcraft_upstream_host: "{{ ('[' ~ teamcraft_upstream_address ~ ']') if ':' in teamcraft_upstream_address else teamcraft_upstream_address }}"
+
+# Ports on the host, loopback only. Set only the ones you move, e.g.
+# teamcraft_ports: {glitchtip: 18092, glitchtip_valkey: 18093, postgres: 18094}. (sfu: read by the
+# firewall template only, which opens nothing for it here.)
+teamcraft_port_defaults:
+  postgres: 5432
+  glitchtip: 8090
+  glitchtip_valkey: 6390
+  sfu: 3478
+teamcraft_ports: "{{ teamcraft_port_defaults }}"
+base_firewall_open_sfu: false
+# The web server in front owns 80/443. Keep this the same as on any other inventory name of the machine
+# (the push gateway sets it from push_gateway_caddy_enabled): both write /etc/sysctl.d/60-teamcraft.conf.
+base_unprivileged_web_ports: false
+
+# Only the database and secrets GlitchTip needs.
+postgres_databases:
+  - {name: glitchtip, owner: glitchtip, password_secret: glitchtip_db_password, enabled: true}
+base_generated_secrets:
+  - {name: postgres_password, kind: hex}
+  - {name: glitchtip_secret_key, kind: hex}
+  - {name: glitchtip_db_password, kind: hex}
+  - {name: glitchtip_valkey_password, kind: hex}
+  - {name: glitchtip_admin_password, kind: hex}
+
+# Services in start order (stop runs it backwards).
+teamcraft_services:
+  - {name: postgres, user: tc-db, enabled: true}
+  - {name: glitchtip-valkey, user: tc-glitchtip, enabled: true}
+  - {name: glitchtip-web, user: tc-glitchtip, enabled: true}
+  - {name: glitchtip-worker, user: tc-glitchtip, enabled: true}
+
+# The nightly dump of the glitchtip database (docs/backups.md). The off-site copy also copies the chat
+# server's attachment bucket and isn't meant for this host: keep it off.
+backups_remote_enabled: false

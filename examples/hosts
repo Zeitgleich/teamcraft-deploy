@@ -5,3 +5,9 @@ chat.example.com ansible_host=203.0.113.10 ansible_user=deploy
 # Only for whoever publishes store apps: a separate host for a push gateway (docs/components/push-gateway.md).
 # [teamcraft_push_gateways]
 # gateway.example.com ansible_host=203.0.113.20 ansible_user=deploy
+
+# Optional: GlitchTip for the apps' crash reports on a host without the chat server, behind the web server
+# it already runs (docs/components/glitchtip.md, "On its own host"). On the push gateway's machine: a
+# second name with the same address, never the gateway's own name.
+# [teamcraft_crash_reports]
+# crashlogs.example.com ansible_host=203.0.113.20 ansible_user=deploy
