@@ -40,6 +40,8 @@ server {
 # Keycloak (sign-in).
 {% elif kind == 's3' %}
 # Garage (S3, attachments).
+{% elif kind == 'glitchtip' %}
+# GlitchTip (error tracking: crash reports of the apps, its web UI).
 {% else %}
 # CalCraft (CalDAV).
 {% endif %}

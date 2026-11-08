@@ -1,0 +1,40 @@
+# Managed by Ansible (teamcraft-deploy, role glitchtip). Runs rootless as tc-glitchtip.
+[Unit]
+Description=GlitchTip web (error tracking: UI, API, event intake)
+After=glitchtip-valkey.service
+Wants=glitchtip-valkey.service
+
+[Container]
+Image={{ glitchtip_image }}
+Pull=missing
+ContainerName=teamcraft-glitchtip-web
+# Host network inside tc-glitchtip's user namespace; listens on loopback only, behind the proxy.
+Network=host
+Environment=SERVER_ROLE=web
+Environment=GRANIAN_HOST={{ teamcraft_upstream_address }}
+Environment=PORT={{ teamcraft_ports.glitchtip }}
+Environment=GRANIAN_WORKERS={{ glitchtip_web_processes | int }}
+{# The include ends without a newline; the line after it supplies one. #}
+{% include 'glitchtip-environment.j2' %}
+
+# The web role doesn't migrate by itself (only the all-in-one role does): migrate, then serve.
+Exec=sh -c "./bin/run-migrate.sh && exec ./bin/start.sh"
+NoNewPrivileges=true
+DropCapability=ALL
+# Exec form: the image has Python but no curl.
+HealthCmd=["python", "-c", "import urllib.request; urllib.request.urlopen('http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.glitchtip }}/_health/', timeout=5)"]
+HealthInterval=30s
+HealthTimeout=10s
+HealthStartPeriod=300s
+HealthRetries=3
+PodmanArgs=--memory={{ glitchtip_web_memory }}
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=5s
+# The first start pulls the image and creates the database's tables.
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

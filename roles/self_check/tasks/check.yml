@@ -31,7 +31,8 @@
   become: false
   loop: "{{ ['https://' ~ teamcraft_domain ~ '/readyz']
             + (['https://' ~ keycloak_hostname ~ '/realms/' ~ keycloak_realm ~ '/.well-known/openid-configuration'] if keycloak_enabled else [])
-            + ([teamcraft_oidc_issuer ~ '/.well-known/openid-configuration'] if not keycloak_enabled else []) }}"
+            + ([teamcraft_oidc_issuer ~ '/.well-known/openid-configuration'] if not keycloak_enabled else [])
+            + (['https://' ~ glitchtip_hostname ~ '/_health/'] if glitchtip_enabled else []) }}"
 
 - name: Internal API is not reachable from outside
   ansible.builtin.uri:

@@ -1,0 +1,86 @@
+- name: Settings
+  ansible.builtin.assert:
+    that:
+      - postgres_enabled
+      - "'@' in glitchtip_admin_email"
+      - glitchtip_retention_days | int >= 1
+      - glitchtip_s3_endpoint | length == 0 or (glitchtip_s3_access_key | length > 0 and glitchtip_s3_secret_key | length > 0)
+    fail_msg: >-
+      glitchtip_enabled needs the bundled Postgres (postgres_enabled), an e-mail address in
+      glitchtip_admin_email, glitchtip_retention_days of at least 1, and with glitchtip_s3_endpoint the keys
+      glitchtip_s3_access_key / glitchtip_s3_secret_key in the sops file (docs/components/glitchtip.md).
+    quiet: true
+
+- name: Service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: glitchtip
+      user: tc-glitchtip
+      secrets: "{{ glitchtip_secrets | dict2items | selectattr('value') | items2dict }}"
+
+- name: Quadlet units
+  ansible.builtin.template:
+    src: "{{ item }}.container.j2"
+    dest: "/home/tc-glitchtip/.config/containers/systemd/{{ item }}.container"
+    owner: tc-glitchtip
+    group: tc-glitchtip
+    mode: "0644"
+  loop: [glitchtip-valkey, glitchtip-web, glitchtip-worker]
+  register: glitchtip_units
+
+# Every unit reads secrets (the Valkey password is in all three), so a changed secret restarts all.
+- name: Restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: "{{ glitchtip_unit.item }}"
+    base_service_changed: "{{ glitchtip_unit.changed or base_service_secrets_changed }}"
+  loop: "{{ glitchtip_units.results }}"
+  loop_control:
+    loop_var: glitchtip_unit
+    label: "{{ glitchtip_unit.item }}"
+
+# The superuser is created now, so the web unit (which migrates the database) has to run.
+- name: Start
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_start
+  vars:
+    base_service_name: "{{ glitchtip_unit }}"
+    base_service_user: tc-glitchtip
+  loop: [glitchtip-valkey, glitchtip-web]
+  loop_control:
+    loop_var: glitchtip_unit
+
+- name: Wait until it answers (migrations run first)
+  ansible.builtin.uri:
+    url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.glitchtip }}/_health/"
+  register: glitchtip_ready
+  until: glitchtip_ready.status == 200
+  retries: 90
+  delay: 5
+
+# Before anyone can register: with registration closed, GlitchTip still lets the first user sign up.
+- name: Superuser
+  ansible.builtin.shell: |
+    set -o pipefail
+    podman exec -i -e GT_EMAIL -e GT_PASSWORD teamcraft-glitchtip-web ./manage.py shell <<'PY'
+    import os
+    from django.contrib.auth import get_user_model
+    users = get_user_model().objects
+    if not users.filter(email__iexact=os.environ["GT_EMAIL"]).exists():
+        users.create_superuser(email=os.environ["GT_EMAIL"], password=os.environ["GT_PASSWORD"])
+        print("created")
+    PY
+  args:
+    executable: /bin/bash
+  environment: "{{ base_service_env | combine({'GT_EMAIL': glitchtip_admin_email, 'GT_PASSWORD': base_secrets.glitchtip_admin_password}) }}"
+  become: true
+  become_user: tc-glitchtip
+  register: glitchtip_superuser
+  changed_when: "'created' in glitchtip_superuser.stdout"
+  no_log: true

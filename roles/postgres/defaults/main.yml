@@ -6,3 +6,7 @@ postgres_memory: 2g
 postgres_databases:
   - {name: teamcraft, owner: teamcraft, password_secret: teamcraft_db_password, enabled: true}
   - {name: keycloak, owner: keycloak, password_secret: keycloak_db_password, enabled: "{{ keycloak_enabled }}"}
+  - {name: glitchtip, owner: glitchtip, password_secret: glitchtip_db_password, enabled: "{{ glitchtip_enabled }}"}
+# Postgres' default is 64. GlitchTip's partitioned tables need more: a query that can't be narrowed to
+# one partition locks every partition and its indexes (its install docs ask for 512).
+postgres_max_locks_per_transaction: "{{ 512 if glitchtip_enabled else 64 }}"

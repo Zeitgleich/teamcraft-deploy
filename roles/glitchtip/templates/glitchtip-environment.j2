@@ -1,0 +1,33 @@
+{# Environment shared by glitchtip-web and glitchtip-worker. #}
+Environment=GLITCHTIP_DOMAIN=https://{{ glitchtip_hostname }}
+Environment=ALLOWED_HOSTS={{ [glitchtip_hostname, teamcraft_upstream_host, 'localhost'] | unique | join(',') }}
+Environment=CSRF_TRUSTED_ORIGINS=https://{{ glitchtip_hostname }}
+Environment=DEFAULT_FROM_EMAIL={{ glitchtip_from_email }}
+Environment=ENABLE_USER_REGISTRATION={{ glitchtip_user_registration | bool | lower }}
+Environment=ENABLE_ORGANIZATION_CREATION={{ glitchtip_organization_creation | bool | lower }}
+Environment=GLITCHTIP_RETENTION_DAYS={{ glitchtip_retention_days | int }}
+Environment=GLITCHTIP_ENABLE_UPTIME={{ glitchtip_uptime_enabled | bool | lower }}
+Environment=GLITCHTIP_ENABLE_LOGS={{ glitchtip_logs_enabled | bool | lower }}
+Environment=ENABLE_ADMIN=false
+Environment=GLITCHTIP_ENABLE_MCP=false
+Environment=GLITCHTIP_ENABLE_DUCKDB=false
+{% for name, value in glitchtip_extra_environment | dictsort %}
+Environment={{ name }}={{ value }}
+{% endfor %}
+Secret=glitchtip_secret_key,type=env,target=SECRET_KEY
+Secret=glitchtip_database_url,type=env,target=DATABASE_URL
+Secret=glitchtip_valkey_url,type=env,target=VALKEY_URL
+{% if glitchtip_email_url | length > 0 %}
+Secret=glitchtip_email_url,type=env,target=EMAIL_URL
+{% else %}
+# No glitchtip_email_url: mail goes to the log only.
+Environment=EMAIL_URL=consolemail://
+{% endif %}
+{% if glitchtip_s3_endpoint | length > 0 %}
+# Debug files in S3 (glitchtip_s3_endpoint) instead of the volume.
+Environment=AWS_S3_ENDPOINT_URL={{ glitchtip_s3_endpoint }}
+Environment=AWS_STORAGE_BUCKET_NAME={{ glitchtip_s3_bucket }}
+Secret=glitchtip_s3_access_key,type=env,target=AWS_ACCESS_KEY_ID
+Secret=glitchtip_s3_secret_key,type=env,target=AWS_SECRET_ACCESS_KEY
+{% endif %}
+Volume=glitchtip-uploads:/code/uploads

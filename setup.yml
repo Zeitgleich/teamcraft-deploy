@@ -20,6 +20,8 @@
     # (docs/components/teamcraft-notetaker.md).
     - role: teamcraft_notetaker
     - role: calcraft
+    # Optional, off by default: error tracking for the apps' crash reports (docs/components/glitchtip.md).
+    - role: glitchtip
     - role: backups
     # Their tasks carry their own tags (start, stop, self-check).
     - role: services

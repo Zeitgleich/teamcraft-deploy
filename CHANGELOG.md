@@ -18,6 +18,16 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Optional role `glitchtip` (`glitchtip_enabled`, off by default): GlitchTip 6.2.6, a self-hosted error
+  tracker that speaks the Sentry protocol, for the crash reports of TeamCraft's apps (TeamCraft#1508).
+  Web, one worker and Valkey run rootless as `tc-glitchtip` (about 1 GB), on loopback behind Caddy or the
+  generated proxy configurations at `glitchtip_hostname` (default `glitchtip.<domain>`: add its DNS
+  records). Its database is in the bundled Postgres, which then runs with `max_locks_per_transaction =
+  512` (one Postgres restart when you turn it on) and is in the nightly dumps. Registration is closed;
+  the playbook creates a superuser for `glitchtip_admin_email` with a generated password. Events are
+  kept for `glitchtip_retention_days` (30). Any other Sentry-protocol backend works as well: TeamCraft
+  only needs a DSN (docs/components/glitchtip.md). `DRY_RUN_GLITCHTIP=1` adds it to the dry run.
+
 - The SFU role raises the host's `net.core.rmem_max` to at least 4 MiB (`teamcraft_sfu_rmem_max_bytes`,
   in `/etc/sysctl.d/60-teamcraft.conf`), so the SFU gets the UDP receive buffer it asks for and a big
   keyframe isn't lost while it is busy. The next `just install-all` restarts the SFU once, which

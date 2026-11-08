@@ -44,6 +44,7 @@ just self-check
 | [Push gateway](docs/components/push-gateway.md)           | off (own host)        | `tc-gateway`   | `push_gateway_enabled`        |
 | [Mail relay](docs/components/mail.md)                     | off (external SMTP)   | –              | `teamcraft_smtp_enabled`      |
 | [CalCraft](docs/components/calcraft.md)                   | off                   | `tc-calcraft`  | `calcraft_enabled`            |
+| [GlitchTip](docs/components/glitchtip.md) (crash reports) | off                   | `tc-glitchtip` | `glitchtip_enabled`           |
 | [Brands](docs/components/branding.md)                     | one built-in          | –              | `teamcraft_brands`            |
 | [Backups](docs/backups.md)                                | on                    | `tc-db`        | `backups_enabled`             |
 | Base (users, Podman, firewall, secrets)                   | always                | root           | `base_firewall_enabled`       |

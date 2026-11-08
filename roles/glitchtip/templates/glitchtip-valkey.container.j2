@@ -1,0 +1,28 @@
+# Managed by Ansible (teamcraft-deploy, role glitchtip). Runs rootless as tc-glitchtip.
+[Unit]
+Description=GlitchTip Valkey (task queue and cache)
+
+[Container]
+Image={{ glitchtip_valkey_image }}
+Pull=missing
+ContainerName=teamcraft-glitchtip-valkey
+# Host network inside tc-glitchtip's user namespace; loopback only, with a password (other users of
+# the host share the loopback).
+Network=host
+# The image's own user: without root its entrypoint changes no owners and needs no capabilities.
+User=999
+Group=1000
+Secret=glitchtip_valkey_config,type=mount,target=/run/secrets/valkey.conf,uid=999,gid=1000,mode=0400
+Exec=valkey-server /run/secrets/valkey.conf --bind 127.0.0.1 --port {{ teamcraft_ports.glitchtip_valkey }} --maxmemory {{ glitchtip_valkey_maxmemory }} --maxmemory-policy noeviction
+Volume=glitchtip-valkey-data:/data
+NoNewPrivileges=true
+DropCapability=ALL
+PodmanArgs=--memory={{ glitchtip_valkey_memory }}
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=default.target

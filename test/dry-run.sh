@@ -20,6 +20,7 @@
 # DRY_RUN_PROXY=nginx runs without Caddy, behind nginx on the target configured with the playbook's own
 # snippet, certificates from a test CA, the SFU's read like Plesk keeps it (test/inventory/external-proxy.yml);
 # it also checks the gateway WebSocket through the proxy (test/gateway-check.py, Python "websockets").
+# DRY_RUN_GLITCHTIP=1 also deploys GlitchTip (glitchtip_enabled) and checks it through the proxy.
 # DRY_RUN_SKIP_E2E=1 leaves out TeamCraft's end-to-end test (it compiles TeamCraft's test harness).
 # DRY_RUN_ANSIBLE_ARGS adds options to every playbook run, e.g. "-e teamcraft_debug=true -vv" to see
 # the output of tasks that hide it because they handle secrets (test secrets only, here).
@@ -44,6 +45,7 @@ domain=chat.172-31-250-10.sslip.io
 sfu_domain=sfu.chat.172-31-250-10.sslip.io
 id_domain=id.chat.172-31-250-10.sslip.io
 s3_domain=s3.chat.172-31-250-10.sslip.io
+glitchtip_domain=glitchtip.chat.172-31-250-10.sslip.io
 # Test users: the password convention of TeamCraft's dev/dev-token.py.
 users=(alice:owner carol:member)
 
@@ -65,6 +67,7 @@ playbook() {
     -e "teamcraft_server_image=$(cat "$state/teamcraft-server.ref")" \
     -e "teamcraft_sfu_image=$(cat "$state/teamcraft-sfu.ref")" \
     ${DRY_RUN_BRANDS:+-e @$here/inventory/brands.yml} ${proxy:+-e @$here/inventory/external-proxy.yml} \
+    ${DRY_RUN_GLITCHTIP:+-e glitchtip_enabled=true} \
     ${DRY_RUN_ANSIBLE_ARGS:-} "$@"
 }
 
@@ -285,8 +288,24 @@ verify() {
       printf "defaults\n    mode http\n    timeout connect 5s\n    timeout client 1m\n    timeout server 1m\n" > /tmp/haproxy-defaults.cfg
       haproxy -c -f /tmp/haproxy-defaults.cfg -f /srv/teamcraft/reverse-proxy/haproxy/teamcraft.cfg'
   fi
+  if [ -n "${DRY_RUN_GLITCHTIP:-}" ]; then
+    step "GlitchTip"
+    for ip in "$target_ip4" "$target_ip6"; do
+      check "GlitchTip health through the proxy over $ip" sh -c "curl -fsS --cacert '$ca' --resolve '$glitchtip_domain:443:$ip' https://$glitchtip_domain/_health/ | grep -qx ok"
+    done
+    check "GlitchTip serves its web UI" sh -c "curl -fsS --cacert '$ca' --resolve '$glitchtip_domain:443:$target_ip4' https://$glitchtip_domain/ | grep -qi '<html'"
+    check "GlitchTip refuses sign-up (registration closed)" sh -c "curl -fsS --cacert '$ca' --resolve '$glitchtip_domain:443:$target_ip4' https://$glitchtip_domain/api/settings/ | grep -q '\"enableUserRegistration\": *false'"
+    # shellcheck disable=SC2016 # expands inside the target, not here
+    check "GlitchTip superuser exists" docker exec "$target" sh -c '
+      echo "from django.contrib.auth import get_user_model; print(get_user_model().objects.filter(is_superuser=True).count())" \
+        | XDG_RUNTIME_DIR=/run/user/$(id -u tc-glitchtip) runuser -u tc-glitchtip -- podman exec -i teamcraft-glitchtip-web ./manage.py shell \
+        | grep -qx 1'
+    # shellcheck disable=SC2016 # expands inside the target, not here
+    check "GlitchTip worker running" docker exec "$target" sh -c '
+      XDG_RUNTIME_DIR=/run/user/$(id -u tc-glitchtip) runuser -u tc-glitchtip -- systemctl --user is-active glitchtip-worker.service'
+  fi
   local port
-  for port in 5432 8080 8081 8180 9180 3900 3901 3903; do
+  for port in 5432 8080 8081 8180 9180 3900 3901 3903 8090 6390; do
     check "port $port not reachable from outside" sh -c "! timeout 3 bash -c \"exec 3<>/dev/tcp/$target_ip4/$port\" 2>/dev/null"
   done
   check "firewall drops other ports" sh -c "! curl -s -m 3 http://$target_ip4:9999/"
@@ -308,6 +327,9 @@ verify() {
   step "Backups"
   check "backup now" playbook --tags=backup
   check "database dumps exist" docker exec "$target" sh -c 'ls /srv/teamcraft/backups/postgres/teamcraft-*.dump /srv/teamcraft/backups/postgres/keycloak-*.dump'
+  if [ -n "${DRY_RUN_GLITCHTIP:-}" ]; then
+    check "GlitchTip database dump exists" docker exec "$target" sh -c 'ls /srv/teamcraft/backups/postgres/glitchtip-*.dump'
+  fi
   # shellcheck disable=SC2016 # expands inside the target, not here
   check "dumps copied off-site" docker exec "$target" sh -c '
     uid=$(id -u tc-garage)
