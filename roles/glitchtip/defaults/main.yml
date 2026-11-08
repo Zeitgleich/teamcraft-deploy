@@ -46,6 +46,16 @@ glitchtip_retention_days: 30
 glitchtip_uptime_enabled: false
 glitchtip_logs_enabled: false
 
+# Spans of performance transactions (GLITCHTIP_ENABLE_DUCKDB): GlitchTip stages them in Postgres and the
+# worker's scheduler moves them every 5 minutes into Parquet files (cold storage), which the "Span
+# breakdown" of a transaction group reads with DuckDB. Off: transactions are kept, their spans are not
+# shown. The files go to the volume glitchtip-cold-storage, or with glitchtip_s3_endpoint to
+# cold_storage/ in glitchtip_s3_bucket.
+glitchtip_duckdb_enabled: true
+# Raw spans are deleted after this many days (GLITCHTIP_SPAN_RAW_RETENTION_DAYS); the hourly trend rollups
+# of the span groups stay longer.
+glitchtip_span_raw_retention_days: 30
+
 # Uploaded debug files (symbols, source maps) are kept in the volume glitchtip-uploads. Set an
 # endpoint to keep them in an S3 bucket instead (e.g. a bucket of the bundled Garage, garage_extra_buckets);
 # the keys go in the sops file as glitchtip_s3_access_key / glitchtip_s3_secret_key.

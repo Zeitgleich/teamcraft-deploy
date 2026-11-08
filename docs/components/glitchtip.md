@@ -195,6 +195,8 @@ All in `roles/glitchtip/defaults/main.yml`; the ones you are most likely to chan
 | `glitchtip_worker_concurrency`                               | `4`                            | tasks the worker runs at once                                                                                    |
 | `glitchtip_web_memory` / `_worker_memory` / `_valkey_memory` | `512m` / `512m` / `128m`       | container memory limits                                                                                          |
 | `glitchtip_uptime_enabled` / `glitchtip_logs_enabled`        | `false`                        | GlitchTip's uptime monitoring and log ingestion, not needed for crash reports                                    |
+| `glitchtip_duckdb_enabled`                                   | `true`                         | store and show the spans of performance transactions (GlitchTip's DuckDB cold storage, see below)               |
+| `glitchtip_span_raw_retention_days`                          | `30`                           | raw spans are deleted after this (`GLITCHTIP_SPAN_RAW_RETENTION_DAYS`); span trend rollups stay longer           |
 | `glitchtip_s3_endpoint`                                      | –                              | keep uploaded debug files in an S3 bucket (`glitchtip_s3_bucket`) instead of the volume                          |
 | `glitchtip_sso_role_claim`                                   | –                              | claim with the users' roles; set to sync organization roles from SSO (see above)                                 |
 | `glitchtip_extra_environment`                                | `{}`                           | more of [GlitchTip's settings](https://glitchtip.com/documentation/install), no secrets                          |
@@ -203,6 +205,15 @@ Debug files (symbols, source maps) are uploaded with `sentry-cli` or GlitchTip's
 same host name; the proxy accepts bodies up to 100 MB. They stay in the volume `glitchtip-uploads`
 unless `glitchtip_s3_endpoint` is set; the S3 keys go in the sops file as `glitchtip_s3_access_key`
 and `glitchtip_s3_secret_key`.
+
+Spans of performance transactions (the steps of a slow operation, e.g. which job it waited behind) are
+shown under Performance → a transaction group → "Span breakdown". GlitchTip stages them in Postgres;
+every 5 minutes the worker writes the ones older than 5 minutes to Parquet files, which the web reads
+with DuckDB (the extensions are in the image, nothing is downloaded). So a new transaction's spans show
+up after 5 to 10 minutes. The files are in the volume `glitchtip-cold-storage`, or with
+`glitchtip_s3_endpoint` under `cold_storage/` in the same bucket. DuckDB takes at most a quarter of a
+container's memory limit (256 MB at most); with many spans, raise `glitchtip_worker_memory`.
+`glitchtip_duckdb_enabled: false` keeps transactions without their spans.
 
 ## Privacy
 
@@ -216,7 +227,8 @@ keep `glitchtip_retention_days` short, and give access only to the people who fi
 
 - The nightly database dump ([../backups.md](../backups.md)) includes `glitchtip`. The uploaded debug
   files (volume `glitchtip-uploads`) are not backed up: they come from your build pipeline and can be
-  uploaded again.
+  uploaded again. Neither are the span files (volume `glitchtip-cold-storage`): they are kept for
+  `glitchtip_span_raw_retention_days` only.
 - The image is pinned (`glitchtip_image`); a playbook release moves it. Migrations run when the web unit
   starts. Read [GlitchTip's blog](https://glitchtip.com/blog/) before a new major version.
 - `glitchtip_enabled: false` and `just setup-all` stop and remove the units; the data (database,

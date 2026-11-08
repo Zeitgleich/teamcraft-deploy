@@ -10,7 +10,8 @@ Environment=GLITCHTIP_ENABLE_UPTIME={{ glitchtip_uptime_enabled | bool | lower }
 Environment=GLITCHTIP_ENABLE_LOGS={{ glitchtip_logs_enabled | bool | lower }}
 Environment=ENABLE_ADMIN=false
 Environment=GLITCHTIP_ENABLE_MCP=false
-Environment=GLITCHTIP_ENABLE_DUCKDB=false
+Environment=GLITCHTIP_ENABLE_DUCKDB={{ glitchtip_duckdb_enabled | bool | lower }}
+Environment=GLITCHTIP_SPAN_RAW_RETENTION_DAYS={{ glitchtip_span_raw_retention_days | int }}
 {% for name, value in glitchtip_extra_environment | dictsort %}
 Environment={{ name }}={{ value }}
 {% endfor %}
@@ -29,5 +30,13 @@ Environment=AWS_S3_ENDPOINT_URL={{ glitchtip_s3_endpoint }}
 Environment=AWS_STORAGE_BUCKET_NAME={{ glitchtip_s3_bucket }}
 Secret=glitchtip_s3_access_key,type=env,target=AWS_ACCESS_KEY_ID
 Secret=glitchtip_s3_secret_key,type=env,target=AWS_SECRET_ACCESS_KEY
+{% if glitchtip_duckdb_enabled | bool %}
+# Span Parquet files (glitchtip_duckdb_enabled) go to cold_storage/ in the same bucket.
+{% endif %}
+{% elif glitchtip_duckdb_enabled | bool %}
+# Span Parquet files (cold storage); written by the worker, read by the web. :U hands the new volume to the
+# image's user (app, uid 5000): the mount point doesn't exist in the image.
+Environment=GLITCHTIP_COLD_STORAGE_DIR=/code/cold-storage
+Volume=glitchtip-cold-storage:/code/cold-storage:U
 {% endif %}
 Volume=glitchtip-uploads:/code/uploads
