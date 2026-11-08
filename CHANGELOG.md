@@ -18,6 +18,10 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- GlitchTip stores and shows the spans of performance transactions (`glitchtip_duckdb_enabled`, on by
+  default): its DuckDB cold storage was off, so every transaction group showed "No span data". The worker
+  moves spans every 5 minutes into Parquet files in the new volume `glitchtip-cold-storage` (or the S3
+  bucket with `glitchtip_s3_endpoint`); raw spans are kept for `glitchtip_span_raw_retention_days` (30).
 - Optional role `glitchtip` (`glitchtip_enabled`, off by default): GlitchTip 6.2.6, a self-hosted error
   tracker that speaks the Sentry protocol, for the crash reports of TeamCraft's apps (TeamCraft#1508).
   Web, one worker and Valkey run rootless as `tc-glitchtip` (about 1 GB), on loopback behind Caddy or the
