@@ -28,6 +28,9 @@ What it does, and why:
   HAProxy.
 - `timeout tunnel 1h` in the server's backend: WebSockets switch to tunnel mode after the upgrade, and
   `timeout tunnel` (not `timeout server`) applies then.
+- The SFU's name: only `/call/fallback` (the WebSocket for clients whose network blocks UDP), to the
+  backend `teamcraft_sfu_fallback` with `timeout tunnel 30s`; anything else on that name finds no
+  backend (503).
 - S3: CORS for every web client origin (preflight answered by HAProxy with 204), `timeout server 10m`
   for large attachments.
 - ACME: HAProxy has no client of its own; use certbot with `--http-01-port` behind a backend, or

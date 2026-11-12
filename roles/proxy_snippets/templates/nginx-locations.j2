@@ -120,6 +120,27 @@
 {{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
 {{ i }}    client_max_body_size 16m;
 {{ i }}}
+{% elif kind == 'sfu' %}
+{{ i }}# Call fallback: a WebSocket to the SFU for clients whose network blocks UDP (calls otherwise go to
+{{ i }}# udp/{{ teamcraft_ports.sfu }} directly). Exact match ("="): a plain prefix location would lose to a regex one.
+{{ i }}location = /call/fallback {
+{{ i }}    proxy_pass {{ upstream }};
+{{ i }}    proxy_http_version 1.1;
+{{ i }}    proxy_set_header Upgrade $http_upgrade;
+{{ i }}    proxy_set_header Connection "upgrade";
+{{ i }}    # The client's address, replacing whatever the client sent (the SFU takes the last entry).
+{{ i }}    proxy_set_header X-Forwarded-For $remote_addr;
+{{ i }}    proxy_buffering off;
+{{ i }}    # As in TeamCraft's docs/operations.md ("Call fallback through the proxy").
+{{ i }}    proxy_read_timeout 30s;
+{{ i }}    proxy_send_timeout 30s;
+{{ i }}}
+{% if not plesk %}
+{{ i }}location / {
+{{ i }}    default_type text/plain;
+{{ i }}    return 200 "TeamCraft SFU\n";
+{{ i }}}
+{% endif %}
 {% elif kind == 'glitchtip' %}
 {{ i }}# Crash reports (envelopes, minidumps) and debug file uploads.
 {{ i }}location {{ catch_all }} {

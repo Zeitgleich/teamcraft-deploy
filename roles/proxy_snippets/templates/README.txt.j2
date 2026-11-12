@@ -22,11 +22,17 @@ Host names and where they go ({{ teamcraft_upstream_host }} is this host's loopb
   https://{{ teamcraft_domain }}/hooks/ and /ingest/  ->  http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.bridge }}  (integration bridge)
 {% endif %}
 {% if teamcraft_sfu_enabled %}
-  {{ teamcraft_sfu_hostname }}  ->  no proxy: the SFU itself on udp/{{ teamcraft_ports.sfu }}, with a copy of this name's
+  {{ teamcraft_sfu_hostname }}: only /call/fallback goes through the proxy (the WebSocket for clients whose
+  network blocks UDP). Calls go to the SFU itself on udp/{{ teamcraft_ports.sfu }}, with a copy of this name's
   certificate ({{ teamcraft_cert_dir }}/sfu.crt, from {{ teamcraft_sfu_certificate_nginx_conf or teamcraft_sfu_certificate_path or 'not set' }})
+{% if teamcraft_proxy_sfu_plesk_domain | length > 0 %}
+  Plesk: an alias of {{ teamcraft_proxy_sfu_plesk_domain }}, so its location is in plesk/{{ teamcraft_proxy_sfu_plesk_domain }}.conf.
+{% endif %}
 {% endif %}
 
 Every proxy must: pass Host unchanged; set X-Forwarded-For (the client's address), -Proto and -Host;
 upgrade WebSockets on /api/v1/gateway and /api/v1/rendezvous with a read timeout over 30 s; refuse
 /api/internal/; accept request bodies up to 4 MiB on the server's names and any size on S3's. With the
 integration bridge: send /hooks/ and /ingest/ to it, /ingest/ unbuffered with a long timeout.
+On the SFU's name: upgrade the WebSocket on exactly /call/fallback, unbuffered, with X-Forwarded-For
+replaced by the client's address and a timeout of at least 30 s.

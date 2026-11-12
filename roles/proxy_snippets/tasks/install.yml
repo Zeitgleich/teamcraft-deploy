@@ -1,3 +1,13 @@
+- name: The SFU's Plesk domain is one of TeamCraft's
+  ansible.builtin.assert:
+    that: >-
+      teamcraft_proxy_sfu_plesk_domain | length == 0 or teamcraft_proxy_sfu_plesk_domain in
+      (proxy_snippets_plesk_sites | map('split') | map(attribute=1) | list)
+    fail_msg: >-
+      teamcraft_proxy_sfu_plesk_domain ({{ teamcraft_proxy_sfu_plesk_domain }}) must be the host name of
+      another TeamCraft site, e.g. {{ teamcraft_domain }}, whose Plesk domain has the SFU's name as an alias.
+    quiet: true
+
 # Configurations for your proxy, nothing runs from them. Readable by root only: they name certificate
 # paths, nothing secret, but the directory is root's.
 - name: Directories
@@ -43,7 +53,7 @@
     owner: root
     group: root
     mode: "0640"
-  loop: "{{ proxy_snippets_sites | map('split') | list }}"
+  loop: "{{ proxy_snippets_plesk_sites | map('split') | list }}"
   loop_control:
     loop_var: proxy_site
     label: "{{ proxy_site[1] }}"

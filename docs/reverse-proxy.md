@@ -25,7 +25,8 @@ Then `just setup-all` (not `install-all`: switching from Caddy needs Caddy remov
   playbook no longer lets unprivileged users bind ports from 80 (`net.ipv4.ip_unprivileged_port_start`
   goes back to the kernel's 1024).
 - The services listen on loopback as before: the server on `127.0.0.1:8080`, Keycloak `:8180`,
-  Garage's S3 API `:3900`, CalCraft `:5232`. Your proxy forwards to them.
+  Garage's S3 API `:3900`, CalCraft `:5232`, the SFU's call fallback `:8082`. Your proxy forwards to
+  them.
 - The server trusts `X-Forwarded-For` and `X-Forwarded-Host` from loopback
   (`teamcraft_trusted_proxies`), so rate limits count per client and brands see the host name the
   client asked for.
@@ -44,6 +45,7 @@ Then `just setup-all` (not `install-all`: switching from Caddy needs Caddy remov
 | `teamcraft_sfu_certificate_nginx_conf`                              | –                                           | instead: the nginx file that names them (Plesk)                                               |
 | `teamcraft_proxy_certificate_path` / `_key_path`                    | `/etc/letsencrypt/live/{host}/fullchain.pem` | what the generated nginx/Apache files use per host name                                     |
 | `teamcraft_proxy_snippets_dir`                                      | `/srv/teamcraft/reverse-proxy`              | where the generated files go                                                                  |
+| `teamcraft_proxy_sfu_plesk_domain`                                  | –                                           | Plesk: the domain the SFU's host name is an alias of ([proxies/plesk.md](proxies/plesk.md)) |
 | `teamcraft_preflight_enabled`                                       | `true`                                      | the checks below                                                                              |
 
 Each service binds one address: `127.0.0.1` (default) or `::1`. Both at once is not possible, and not
@@ -75,11 +77,19 @@ For each host name ([dns.md](dns.md)):
 | `s3.chat.example.com`        | `127.0.0.1:3900` | `Host` unchanged, no body size limit, CORS for the web client's origins                  |
 | `cal.chat.example.com`       | `127.0.0.1:5232` | CalCraft only                                                                            |
 | `glitchtip.chat.example.com` | `127.0.0.1:8090` | GlitchTip only; request bodies up to 100 MB (crash reports, debug files)                 |
-| `sfu.chat.example.com`       | – (not proxied)  | only a certificate; the SFU itself answers on **udp/3478**                               |
+| `sfu.chat.example.com`       | `127.0.0.1:8082` | only `/call/fallback`, as a WebSocket (below); calls go to the SFU on **udp/3478**        |
 
 With the integration bridge (`teamcraft_bridge_enabled`), `chat.example.com` also sends `/hooks/` and
 `/ingest/` to `127.0.0.1:8088`; `/ingest/` unbuffered, without a body size limit and with a long read
 timeout (log lines can be a stream). The generated files do it.
+
+On `sfu.chat.example.com`, exactly `/call/fallback` goes to the SFU's call fallback
+(`teamcraft_ports.sfu_fallback`): the WebSocket for clients whose network blocks UDP. It needs the
+upgrade, no buffering, `X-Forwarded-For` replaced by the client's address (the SFU takes the last
+entry) and a timeout of at least 30 s. In nginx write it `location = /call/fallback`: a regex location
+(such as the Plesk files' catch-all) wins over a plain prefix one. Without the route, clients on such
+networks can't join calls; everyone else is unaffected
+([components/teamcraft-sfu.md](components/teamcraft-sfu.md#call-fallback-for-networks-that-block-udp)).
 
 And everywhere:
 
@@ -174,7 +184,7 @@ TeamCraft's own services (already installed) don't count as conflicts.
 From your machine, after `just install-all` and reloading the proxy:
 
 ```sh
-just self-check                                   # services, health, internal API refused, S3, Keycloak
+just self-check                                   # services, health, internal API refused, call fallback, S3, Keycloak
 
 # Health over IPv4 and IPv6, HTTP/2
 curl -4 -sS -o /dev/null -w '%{http_version} %{http_code}\n' https://chat.example.com/readyz   # 2 200
@@ -196,6 +206,11 @@ curl -s -D - -o /dev/null -X OPTIONS -H 'Origin: https://chat.example.com' https
 
 # SFU: QUIC handshake with a trusted certificate (needs a curl with HTTP/3, e.g. Fedora's or Debian 13's)
 curl -v -m 5 --http3-only https://sfu.chat.example.com:3478/ 2>&1 | grep -E 'SSL certificate verified|subject:'
+
+# SFU's call fallback (networks that block UDP): 101; 200, 404 or 502 mean it doesn't reach the SFU
+curl -sS -o /dev/null -w '%{http_code}\n' --http1.1 --max-time 10 -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
+  -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+  https://sfu.chat.example.com/call/fallback
 ```
 
 Then the real thing: sign in with an app, send a message (gateway), upload an image (S3), and start a

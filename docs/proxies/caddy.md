@@ -19,8 +19,10 @@ global options block at the top if you have your own – and `caddy reload`.
 Caddy needs no extra settings for TeamCraft: it passes `Host`, sets `X-Forwarded-For/-Proto/-Host`
 (replacing what clients send), upgrades WebSockets and has no read timeout on them.
 
-The SFU's site block (`sfu.chat.example.com { respond "TeamCraft SFU" 200 }`) is there so Caddy gets a
-certificate for that name. Caddy must have obtained it before the playbook starts the SFU: run
+The SFU's site block sends `/call/fallback` to the SFU's call fallback (`127.0.0.1:8082`, the WebSocket
+for clients whose network blocks UDP, with `stream_close_delay 5m` so a `caddy reload` doesn't drop those
+calls) and answers everything else with a placeholder. It also makes Caddy get a certificate for that
+name. Caddy must have obtained it before the playbook starts the SFU: run
 `caddy reload` with the new blocks first, wait until the files exist, then `just setup-all`. If Caddy
 runs as another user or with another storage path, find the files with
 `sudo find / -path '*certificates*' -name 'sfu.chat.example.com.crt'`.
