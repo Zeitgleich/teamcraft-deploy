@@ -52,7 +52,7 @@ fallback for networks that block UDP ([step 3](#3-nginx-directives-per-domain)).
 tell the playbook, so the fallback's location goes into the chat domain's directives:
 
 ```yaml
-teamcraft_proxy_sfu_plesk_domain: chat.example.com
+teamcraft_proxy_sfu_alias_of: chat.example.com
 ```
 
 ## 2. Playbook
@@ -98,7 +98,7 @@ the file). If your Plesk keeps it elsewhere, point the setting there.
 ## 3. nginx directives per domain
 
 For `chat.example.com`, `sfu.chat.example.com`, `id.chat.example.com`, `s3.chat.example.com` (and
-`cal.`, brand host names). With `teamcraft_proxy_sfu_plesk_domain` there is no file for the SFU's name;
+`cal.`, brand host names). With `teamcraft_proxy_sfu_alias_of` there is no file for the SFU's name;
 its location is at the end of that domain's file.
 
 1. **Websites & Domains → the domain → Apache & nginx Settings**.

@@ -30,7 +30,7 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
   checked by the preflight. Caddy routes exactly `/call/ws` on the SFU's name to it, with
   `stream_close_delay 5m`; the generated nginx, Plesk, Apache, HAProxy and Traefik configurations have a
   site for the SFU's name with that route, which so far only had a certificate. Behind Plesk, when the
-  SFU's name is an alias of the chat domain, `teamcraft_proxy_sfu_plesk_domain` puts the location into
+  SFU's name is an alias of the chat domain, `teamcraft_proxy_sfu_alias_of` puts the location into
   that domain's directives. `just self-check` expects `101` from the route. **Own proxy:** paste or
   copy the regenerated configuration after `just install-all` (docs/reverse-proxy.md); until then
   clients on such networks fail to join, as before.

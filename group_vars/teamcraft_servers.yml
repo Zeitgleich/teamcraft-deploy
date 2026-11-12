@@ -38,10 +38,11 @@ teamcraft_sfu_certificate_external: >-
 teamcraft_proxy_snippets_dir: "{{ teamcraft_base_dir }}/reverse-proxy"
 teamcraft_proxy_certificate_path: "/etc/letsencrypt/live/{host}/fullchain.pem"
 teamcraft_proxy_certificate_key_path: "/etc/letsencrypt/live/{host}/privkey.pem"
-# Plesk: when the SFU's host name is an alias of another TeamCraft domain (one Plesk domain, one
-# certificate), that domain, e.g. the chat domain: the SFU's call fallback location goes into its
-# directives file. Empty: the SFU's name is a Plesk domain of its own and gets its own file.
-teamcraft_proxy_sfu_plesk_domain: ""
+# When your proxy serves the SFU's host name as an alias of another TeamCraft host name (one site, one
+# certificate), e.g. the chat domain: that host name. The SFU's /call/ws location then goes into that
+# site's configuration (the per-domain Plesk files; the other outputs have a block per name anyway).
+# Empty: the SFU's name is a site of its own.
+teamcraft_proxy_sfu_alias_of: ""
 
 # Checks before anything is installed: ports already taken by other software (80/443 with Caddy, the
 # loopback ports of the services, the SFU's UDP port), and a Plesk firewall the playbook's would replace.
