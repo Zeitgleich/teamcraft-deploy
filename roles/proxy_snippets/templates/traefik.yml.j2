@@ -70,8 +70,15 @@ http:
         certResolver: letsencrypt
 {% endif %}
 {% if teamcraft_sfu_enabled %}
-    # Only for the certificate of {{ teamcraft_sfu_hostname }}, which the SFU uses on udp/{{ teamcraft_ports.sfu }} (export it
-    # from Traefik's acme.json, docs/proxies/traefik.md).
+    # Call fallback: a WebSocket to the SFU for clients whose network blocks UDP.
+    teamcraft-sfu-fallback:
+      rule: "Host(`{{ teamcraft_sfu_hostname }}`) && Path(`/call/ws`)"
+      entryPoints: [websecure]
+      service: teamcraft-sfu-fallback
+      tls:
+        certResolver: letsencrypt
+    # Everything else on {{ teamcraft_sfu_hostname }}: only there for its certificate, which the SFU uses on
+    # udp/{{ teamcraft_ports.sfu }} (export it from Traefik's acme.json, docs/proxies/traefik.md).
     teamcraft-sfu-certificate:
       rule: "Host(`{{ teamcraft_sfu_hostname }}`)"
       entryPoints: [websecure]
@@ -104,6 +111,12 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.server }}"
+{% if teamcraft_sfu_enabled %}
+    teamcraft-sfu-fallback:
+      loadBalancer:
+        servers:
+          - url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.sfu_fallback }}"
+{% endif %}
 {% if teamcraft_bridge_enabled %}
     teamcraft-bridge:
       loadBalancer:

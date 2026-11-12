@@ -45,6 +45,26 @@
   become: false
   when: teamcraft_server_enabled
 
+# The WebSocket for clients whose network blocks UDP: the proxy must hand the upgrade to the SFU. 101:
+# the SFU took it (and closes it after 3 s without a join); 401: the SFU too, with
+# TEAMCRAFT_SFU_FALLBACK_REQUIRE_UPGRADE_TOKEN=1. 200 or 404: the request ended at the proxy or the chat
+# server, or the SFU is older than the /call/ws path (TeamCraft#TBD); 502/504: the proxy can't reach the
+# SFU's port.
+- name: Call fallback reaches the SFU through the proxy
+  ansible.builtin.uri:
+    url: "https://{{ teamcraft_sfu_hostname }}/call/ws"
+    headers:
+      Connection: Upgrade
+      Upgrade: websocket
+      Sec-WebSocket-Version: "13"
+      Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
+    status_code: [101, 401]
+    timeout: 15
+    validate_certs: "{{ self_check_validate_certs }}"
+  delegate_to: localhost
+  become: false
+  when: teamcraft_sfu_enabled and teamcraft_server_enabled
+
 - name: S3 endpoint answers
   ansible.builtin.uri:
     url: "{{ teamcraft_s3_endpoint }}"

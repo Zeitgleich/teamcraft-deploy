@@ -33,7 +33,8 @@
          + ([{'proto': 'tcp', 'port': teamcraft_ports.postgres, 'user': 'tc-db'}] if postgres_enabled else [])
          + ([{'proto': 'tcp', 'port': teamcraft_ports.server, 'user': 'tc-server'}] if teamcraft_server_enabled else [])
          + ([{'proto': 'udp', 'port': teamcraft_ports.sfu, 'user': 'tc-sfu'},
-             {'proto': 'tcp', 'port': teamcraft_ports.sfu_control, 'user': 'tc-sfu'}] if teamcraft_sfu_enabled else [])
+             {'proto': 'tcp', 'port': teamcraft_ports.sfu_control, 'user': 'tc-sfu'},
+             {'proto': 'tcp', 'port': teamcraft_ports.sfu_fallback, 'user': 'tc-sfu'}] if teamcraft_sfu_enabled else [])
          + ([{'proto': 'tcp', 'port': teamcraft_ports.keycloak, 'user': 'tc-keycloak'},
              {'proto': 'tcp', 'port': teamcraft_ports.keycloak_management, 'user': 'tc-keycloak'}] if keycloak_enabled else [])
          + ([{'proto': 'tcp', 'port': teamcraft_ports.garage_s3, 'user': 'tc-garage'},

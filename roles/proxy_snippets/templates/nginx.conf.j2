@@ -40,6 +40,9 @@ server {
 # Keycloak (sign-in).
 {% elif kind == 's3' %}
 # Garage (S3, attachments).
+{% elif kind == 'sfu' %}
+# SFU: only its call fallback (WebSocket); calls themselves go to udp/{{ teamcraft_ports.sfu }}, where the SFU uses a
+# copy of this name's certificate (teamcraft_sfu_certificate_path, docs/reverse-proxy.md).
 {% elif kind == 'glitchtip' %}
 # GlitchTip (error tracking: crash reports of the apps, its web UI).
 {% else %}
@@ -65,9 +68,3 @@ server {
 
 {{ nginx.locations(kind, host, port, alt_svc=not legacy) }}}
 {% endfor %}
-{% if teamcraft_sfu_enabled %}
-
-# {{ teamcraft_sfu_hostname }} needs no proxying: the SFU speaks QUIC on udp/{{ teamcraft_ports.sfu }} itself, with a
-# copy of this host name's certificate (teamcraft_sfu_certificate_path, docs/reverse-proxy.md). Port 80
-# above only answers its ACME challenges.
-{% endif %}

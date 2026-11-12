@@ -6,4 +6,15 @@
 # directly by nginx" for this domain (its regex for .js, .css, .png, ... comes first and would serve them
 # from the document root). Plesk adds listen, server_name and the certificate itself.
 
+{% if proxy_site[0] == 'sfu' %}
+# The SFU's domain: Plesk keeps answering everything else (and its Let's Encrypt renewals); calls use
+# udp/{{ teamcraft_ports.sfu }} with a copy of this domain's certificate.
+{% endif %}
 {{ nginx.locations(proxy_site[0], proxy_site[1], proxy_site[2], '', plesk=true) }}
+{%- if teamcraft_sfu_enabled and proxy_site[0] == 'server' and proxy_site[1] == teamcraft_domain %}
+
+# The SFU's call fallback, for when {{ teamcraft_sfu_hostname }} is an alias of this domain (one Plesk domain,
+# one certificate). As a domain of its own it has its own file; then this location is merely unused here.
+{{ nginx.locations('sfu', teamcraft_sfu_hostname, teamcraft_ports.sfu_fallback, '', plesk=true) }}
+{%- endif %}
+

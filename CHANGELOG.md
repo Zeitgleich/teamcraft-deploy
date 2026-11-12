@@ -8,6 +8,11 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The SFU's call fallback listens on the upstream address only (`127.0.0.1:8082` by default,
+  `TEAMCRAFT_SFU_FALLBACK_BIND`). With TeamCraft 1.0.20 or later and host networking it listened on
+  `[::]:8082`, plain HTTP on every address of the host, guarded only by the firewall. Move it with
+  `teamcraft_ports.sfu_fallback` if 8082 is taken on the host.
+
 - Caddy and the generated nginx, Plesk, Apache and HAProxy files answer `/share-target` with a 303 without
   reading the body. A share from another app can carry plaintext files, which a buffering proxy would
   otherwise keep on disk. Web shares stay off in TeamCraft until this is rolled out. Own proxies:
@@ -17,6 +22,19 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
   running `just install-all`, or keep the old port with `teamcraft_ports.sfu: 4433`.
 
 ### Added
+
+- The SFU's call fallback goes through the reverse proxy (TeamCraft#1226): clients whose network blocks
+  UDP reach the SFU over a WebSocket at `wss://<teamcraft_sfu_hostname>/call/ws` on TCP 443. The path
+  needs a TeamCraft release that serves `/call/ws` (TeamCraft#TBD; earlier releases call it
+  `/call/fallback`, which the proxies don't route). New loopback port `teamcraft_ports.sfu_fallback` (8082),
+  checked by the preflight. Caddy routes exactly `/call/ws` on the SFU's name to it, with
+  `stream_close_delay 5m`; the generated nginx, Plesk, Apache, HAProxy and Traefik configurations have a
+  site for the SFU's name with that route, which so far only had a certificate. For Plesk the chat
+  domain's directives carry the location too, for an SFU name that is an alias of that domain. `just self-check` expects `101` from the route. **Own proxy:** paste or
+  copy the regenerated configuration after `just install-all` (docs/reverse-proxy.md); until then
+  clients on such networks fail to join, as before.
+- The SFU container's open file limit is raised to 4096 (`teamcraft_sfu_nofile`) for the fallback's
+  connections.
 
 - GlitchTip stores and shows the spans of performance transactions (`glitchtip_duckdb_enabled`, on by
   default): its DuckDB cold storage was off, so every transaction group showed "No span data". The worker

@@ -24,11 +24,11 @@ tell you whether it works.
   doesn't upgrade WebSockets); the directives below replace them.
 - **Ports**: Plesk uses 8443 and 8880 (panel), 7080/7081 (Apache behind nginx), 3306 (MariaDB) and,
   if installed, 5432 (PostgreSQL); Docker containers publish their own. TeamCraft's defaults (8080,
-  8081, 8180, 9180, 3900–3903, 5232, 5432) are on loopback; the preflight check stops the run if one is
+  8081, 8082, 8180, 9180, 3900–3903, 5232, 5432) are on loopback; the preflight check stops the run if one is
   taken. Move only those, the rest keep their defaults:
 
   ```yaml
-  teamcraft_ports: {postgres: 13100, server: 13101, sfu: 3478, sfu_control: 13102}
+  teamcraft_ports: {postgres: 13100, server: 13101, sfu: 3478, sfu_control: 13102, sfu_fallback: 13104}
   ```
 
   TeamCraft's PostgreSQL is its own (rootless, on its own port); an existing PostgreSQL stays untouched.
@@ -46,7 +46,10 @@ For each host name – `chat.example.com`, `sfu.chat.example.com`, `id.chat.exam
    off – it has no DNS record). Plesk renews it.
 3. **Hosting Settings**: *Permanent SEO-safe 301 redirect from HTTP to HTTPS* on. No PHP needed.
 
-The SFU's domain needs nothing else: it exists only so Plesk gets and renews its certificate.
+The SFU's domain gets Plesk's certificate (which the SFU uses on udp/3478) and one location, its call
+fallback for networks that block UDP ([step 3](#3-nginx-directives-per-domain)). It can also be an
+**alias** of the chat domain instead of a domain of its own, with one certificate for all names: the
+chat domain's directives have that location as well, so both work without a setting.
 
 ## 2. Playbook
 
@@ -90,7 +93,9 @@ the file). If your Plesk keeps it elsewhere, point the setting there.
 
 ## 3. nginx directives per domain
 
-For `chat.example.com`, `id.chat.example.com`, `s3.chat.example.com` (and `cal.`, brand host names):
+For `chat.example.com`, `sfu.chat.example.com`, `id.chat.example.com`, `s3.chat.example.com` (and
+`cal.`, brand host names). If the SFU's name is an alias of the chat domain, skip its file: its
+location is also at the end of the chat domain's.
 
 1. **Websites & Domains → the domain → Apache & nginx Settings**.
 2. Under *nginx settings*, turn **Serve static files directly by nginx** off. Its regex location for
@@ -149,6 +154,27 @@ location ~ ^/(?![.]well-known/acme-challenge/) {
 
 Let's Encrypt keeps working: the catch-all leaves `/.well-known/acme-challenge/` to Plesk.
 
+The SFU's file (or the end of the chat domain's, when the SFU's name is an alias) has only the call
+fallback, the WebSocket for clients whose network blocks UDP; Plesk keeps answering everything else on
+that name:
+
+```nginx
+location = /call/ws {
+    proxy_pass http://127.0.0.1:8082;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_buffering off;
+    proxy_read_timeout 30s;
+    proxy_send_timeout 30s;
+}
+```
+
+Keep the `=`: without it, the chat domain's regex catch-all would win and send the fallback to the chat
+server. In the chat domain's file the location answers on its other names too (and, with the SFU as a
+domain of its own, isn't used); only clients given the SFU's URL ask for it.
+
 Plesk regenerates a domain's configuration whenever you change its settings and keeps your additional
 directives; it never sees TeamCraft otherwise. After a playbook change of ports, host names or
 `teamcraft_upstream_address`, paste the regenerated files again.
@@ -191,4 +217,5 @@ sudo grep -c proxy_pass /var/www/vhosts/system/chat.example.com/conf/vhost_nginx
 | web client loads without scripts or styles     | *Serve static files directly by nginx* is on for the domain              |
 | the Plesk default page instead of TeamCraft     | directives not saved on this domain, or the wrong domain                |
 | calls ring but never connect                    | udp/3478 closed (Plesk firewall, hoster), or the SFU certificate failed |
+| calls fail only on networks that block UDP      | the SFU's `location = /call/ws` not pasted, or on the wrong domain |
 | SFU certificate copy fails after a renewal      | `journalctl -u teamcraft-sfu-cert.service`: the file it names, and why  |

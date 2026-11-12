@@ -73,7 +73,10 @@ On Debian's nginx, `conf.d/*.conf` is included inside `http {}`; `sites-availabl
 - Keycloak: only `/realms/`, `/resources/`, `/robots.txt`, with bigger proxy buffers (Keycloak's
   cookies and headers overflow nginx's defaults: "upstream sent too big header");
 - Garage: `client_max_body_size 0`, `proxy_request_buffering off`, 10 min timeouts, CORS headers for
-  every host name of the web client and `204` for preflight requests.
+  every host name of the web client and `204` for preflight requests;
+- the SFU's name: only `location = /call/ws` (the WebSocket for clients whose network blocks UDP)
+  to `127.0.0.1:8082`, with the upgrade, `proxy_buffering off` and 30 s timeouts; anything else gets a
+  placeholder. Keep the `=`: nginx prefers a regex location over a plain prefix one.
 
 An excerpt (the server's part):
 
@@ -145,3 +148,4 @@ sudo tail -f /var/log/nginx/error.log                         # "upstream sent t
 | attachments fail with `SignatureDoesNotMatch` | `Host` not passed (`proxy_set_header Host $host`)                     |
 | attachments fail in the web client only      | CORS headers missing on the S3 name                                   |
 | everyone gets `429` after a few logins       | `X-Forwarded-For` missing: all clients look like 127.0.0.1            |
+| calls fail only on networks that block UDP   | `location = /call/ws` missing on the SFU's name (`curl` gives 200) |

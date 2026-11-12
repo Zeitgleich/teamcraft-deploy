@@ -65,6 +65,8 @@ configuration). The server's:
 - S3: `nocanon` and `AllowEncodedSlashes NoDecode` keep the path exactly as signed, `LimitRequestBody 0`,
   CORS headers via `SetEnvIf Origin` for every host name of the web client, `OPTIONS` answered with 204
   by mod_rewrite.
+- The SFU's host: only `ProxyPass /call/ws http://127.0.0.1:8082/call/ws upgrade=websocket
+  timeout=30`, the WebSocket for clients whose network blocks UDP.
 - With **mpm_prefork** (mod_php) Apache serves no HTTP/2; `Protocols` is then ignored. mpm_event is
   better for many long-lived WebSockets as well: each open connection holds a worker under prefork.
 

@@ -27,6 +27,8 @@ What it does:
 - Keycloak: the router matches `/realms/`, `/resources/` and `/robots.txt` only; anything else on that
   name finds no router (404).
 - S3: the `headers` middleware adds CORS for every web client origin and answers preflight requests.
+- The SFU's name: a router for ``Path(`/call/ws`)`` (the WebSocket for clients whose network
+  blocks UDP) to `127.0.0.1:8082`; everything else on that name only answers loopback.
 - WebSockets need nothing: Traefik upgrades them by itself, and `Host` is passed unchanged
   (`passHostHeader`, the default).
 - `X-Forwarded-For`: Traefik replaces what clients send unless they come from

@@ -18,6 +18,14 @@ Secret=sfu_registration_token,type=env,target=TEAMCRAFT_SFU_REGISTRATION_TOKEN
 Environment=TEAMCRAFT_SFU_BIND=[::]:{{ teamcraft_ports.sfu }}
 # Health and host controls (called by the server): loopback only.
 Environment=TEAMCRAFT_SFU_HEALTH_BIND=127.0.0.1:{{ teamcraft_ports.sfu_control }}
+# Call fallback (WebSocket over TCP for clients whose network blocks UDP), reached through the proxy at
+# wss://{{ teamcraft_sfu_hostname }}/call/ws. Plain HTTP: on the upstream address only, as the image's
+# [::]:8082 would be every address of the host (Network=host).
+Environment=TEAMCRAFT_SFU_FALLBACK_BIND={{ teamcraft_upstream_host }}:{{ teamcraft_ports.sfu_fallback }}
+{% if not (teamcraft_upstream_address is match('127[.]') or teamcraft_upstream_address == '::1') %}
+# The proxy connects from {{ teamcraft_upstream_address }}, not loopback: trust its X-Forwarded-For.
+Environment=TEAMCRAFT_SFU_FALLBACK_TRUSTED_PROXIES={{ teamcraft_upstream_address }}
+{% endif %}
 Environment=TEAMCRAFT_SFU_CERT=/certs/sfu.crt
 Environment=TEAMCRAFT_SFU_KEY=/certs/sfu.key
 Environment=TEAMCRAFT_SFU_JOIN_TOKEN_PUBLIC_KEY=/etc/teamcraft/call-signing.pub.pem
@@ -37,7 +45,8 @@ HealthCmd=["/usr/local/bin/teamcraft-sfu", "healthcheck"]
 HealthInterval=30s
 # keep-groups: tc-sfu's group tc-certs reaches the container (the certificate). As an argument, not
 # GroupAdd=: Quadlet only knows that key from Podman 5 on (Ubuntu 24.04 has 4.9).
-PodmanArgs=--memory={{ teamcraft_sfu_memory }} --group-add=keep-groups
+# nofile: about 1,216 descriptors for the fallback's connections at its defaults (the SFU warns below).
+PodmanArgs=--memory={{ teamcraft_sfu_memory }} --group-add=keep-groups{{ (' --ulimit=nofile=' ~ teamcraft_sfu_nofile ~ ':' ~ teamcraft_sfu_nofile) if teamcraft_sfu_nofile | int > 0 else '' }}
 LogDriver=journald
 
 [Service]

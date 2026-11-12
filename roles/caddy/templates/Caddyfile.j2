@@ -32,10 +32,21 @@
 	reverse_proxy {{ teamcraft_upstream_host }}:{{ teamcraft_ports.server }}
 }
 
-# Certificate only; the SFU terminates QUIC itself on udp/{{ teamcraft_ports.sfu }}.
+# The SFU terminates QUIC itself on udp/{{ teamcraft_ports.sfu }} with this name's certificate. Clients whose network
+# blocks UDP fall back to a WebSocket on 443 (TeamCraft docs/operations.md, "Call fallback through the proxy").
 {{ teamcraft_sfu_hostname }} {
 	import tls
-	respond "TeamCraft SFU" 200
+{% if teamcraft_sfu_enabled %}
+	handle /call/ws {
+		reverse_proxy {{ teamcraft_upstream_host }}:{{ teamcraft_ports.sfu_fallback }} {
+			# Otherwise a reload of Caddy closes every call on the fallback at once (they rejoin).
+			stream_close_delay 5m
+		}
+	}
+{% endif %}
+	handle {
+		respond "TeamCraft SFU" 200
+	}
 }
 {% if keycloak_enabled %}
 
