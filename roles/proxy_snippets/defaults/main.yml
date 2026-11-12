@@ -4,7 +4,7 @@
 
 # Every public host name with what it forwards to. kind: server (API, gateway, web client; one per brand
 # host name), keycloak (only the paths users and apps need), s3 (Garage, with CORS for the web client),
-# calcraft, glitchtip (error tracking), sfu (only /call/fallback, the WebSocket for clients whose network
+# calcraft, glitchtip (error tracking), sfu (only /call/ws, the WebSocket for clients whose network
 # blocks UDP; calls themselves go to the SFU on udp/<sfu port> directly).
 proxy_snippets_sites: >-
   {{ teamcraft_web_hostnames | map('regex_replace', '^', 'server ') | map('regex_replace', '$', ' ' ~ teamcraft_ports.server) | list

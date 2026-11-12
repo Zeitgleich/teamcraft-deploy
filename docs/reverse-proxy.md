@@ -77,16 +77,16 @@ For each host name ([dns.md](dns.md)):
 | `s3.chat.example.com`        | `127.0.0.1:3900` | `Host` unchanged, no body size limit, CORS for the web client's origins                  |
 | `cal.chat.example.com`       | `127.0.0.1:5232` | CalCraft only                                                                            |
 | `glitchtip.chat.example.com` | `127.0.0.1:8090` | GlitchTip only; request bodies up to 100 MB (crash reports, debug files)                 |
-| `sfu.chat.example.com`       | `127.0.0.1:8082` | only `/call/fallback`, as a WebSocket (below); calls go to the SFU on **udp/3478**        |
+| `sfu.chat.example.com`       | `127.0.0.1:8082` | only `/call/ws`, as a WebSocket (below); calls go to the SFU on **udp/3478**        |
 
 With the integration bridge (`teamcraft_bridge_enabled`), `chat.example.com` also sends `/hooks/` and
 `/ingest/` to `127.0.0.1:8088`; `/ingest/` unbuffered, without a body size limit and with a long read
 timeout (log lines can be a stream). The generated files do it.
 
-On `sfu.chat.example.com`, exactly `/call/fallback` goes to the SFU's call fallback
+On `sfu.chat.example.com`, exactly `/call/ws` goes to the SFU's call fallback
 (`teamcraft_ports.sfu_fallback`): the WebSocket for clients whose network blocks UDP. It needs the
 upgrade, no buffering, `X-Forwarded-For` replaced by the client's address (the SFU takes the last
-entry) and a timeout of at least 30 s. In nginx write it `location = /call/fallback`: a regex location
+entry) and a timeout of at least 30 s. In nginx write it `location = /call/ws`: a regex location
 (such as the Plesk files' catch-all) wins over a plain prefix one. Without the route, clients on such
 networks can't join calls; everyone else is unaffected
 ([components/teamcraft-sfu.md](components/teamcraft-sfu.md#call-fallback-for-networks-that-block-udp)).
@@ -210,7 +210,7 @@ curl -v -m 5 --http3-only https://sfu.chat.example.com:3478/ 2>&1 | grep -E 'SSL
 # SFU's call fallback (networks that block UDP): 101; 200, 404 or 502 mean it doesn't reach the SFU
 curl -sS -o /dev/null -w '%{http_code}\n' --http1.1 --max-time 10 -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
   -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
-  https://sfu.chat.example.com/call/fallback
+  https://sfu.chat.example.com/call/ws
 ```
 
 Then the real thing: sign in with an app, send a message (gateway), upload an image (S3), and start a

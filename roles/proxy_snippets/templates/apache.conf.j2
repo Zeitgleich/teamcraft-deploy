@@ -79,7 +79,7 @@
 {% elif kind == 'sfu' %}
     # Call fallback: a WebSocket to the SFU for clients whose network blocks UDP (calls otherwise go to
     # udp/{{ teamcraft_ports.sfu }} directly). Only this path.
-    ProxyPass /call/fallback {{ upstream }}/call/fallback upgrade=websocket timeout=30
+    ProxyPass /call/ws {{ upstream }}/call/ws upgrade=websocket timeout=30
 {% elif kind == 'glitchtip' %}
     # Crash reports (envelopes, minidumps) and debug file uploads.
     ProxyPass / {{ upstream }}/

@@ -37,7 +37,7 @@
 {{ teamcraft_sfu_hostname }} {
 	import tls
 {% if teamcraft_sfu_enabled %}
-	handle /call/fallback {
+	handle /call/ws {
 		reverse_proxy {{ teamcraft_upstream_host }}:{{ teamcraft_ports.sfu_fallback }} {
 			# Otherwise a reload of Caddy closes every call on the fallback at once (they rejoin).
 			stream_close_delay 5m

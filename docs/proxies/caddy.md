@@ -19,7 +19,7 @@ global options block at the top if you have your own – and `caddy reload`.
 Caddy needs no extra settings for TeamCraft: it passes `Host`, sets `X-Forwarded-For/-Proto/-Host`
 (replacing what clients send), upgrades WebSockets and has no read timeout on them.
 
-The SFU's site block sends `/call/fallback` to the SFU's call fallback (`127.0.0.1:8082`, the WebSocket
+The SFU's site block sends `/call/ws` to the SFU's call fallback (`127.0.0.1:8082`, the WebSocket
 for clients whose network blocks UDP, with `stream_close_delay 5m` so a `caddy reload` doesn't drop those
 calls) and answers everything else with a placeholder. It also makes Caddy get a certificate for that
 name. Caddy must have obtained it before the playbook starts the SFU: run

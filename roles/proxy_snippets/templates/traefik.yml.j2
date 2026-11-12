@@ -72,7 +72,7 @@ http:
 {% if teamcraft_sfu_enabled %}
     # Call fallback: a WebSocket to the SFU for clients whose network blocks UDP.
     teamcraft-sfu-fallback:
-      rule: "Host(`{{ teamcraft_sfu_hostname }}`) && Path(`/call/fallback`)"
+      rule: "Host(`{{ teamcraft_sfu_hostname }}`) && Path(`/call/ws`)"
       entryPoints: [websecure]
       service: teamcraft-sfu-fallback
       tls:

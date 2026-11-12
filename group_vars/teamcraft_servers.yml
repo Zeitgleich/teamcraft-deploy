@@ -95,7 +95,7 @@ teamcraft_caldav_password: "{{ base_secrets.calcraft_password if calcraft_enable
 
 # Ports on the host. Only Caddy (80, 443) and the SFU are public; everything else is loopback (the
 # bridge's webhooks are reached through the proxy, under /hooks/ and /ingest/; the SFU's call fallback
-# for networks that block UDP under wss://<SFU host>/call/fallback). Change
+# for networks that block UDP under wss://<SFU host>/call/ws). Change
 # any that other software on the host already uses (the preflight checks say which).
 teamcraft_port_defaults:
   postgres: 5432

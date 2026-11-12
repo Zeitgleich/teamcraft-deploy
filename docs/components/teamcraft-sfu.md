@@ -20,16 +20,17 @@ Clients whose network blocks UDP fall back to a WebSocket through the reverse pr
 ## Call fallback for networks that block UDP
 
 Calls use QUIC on udp/3478. A client whose network blocks UDP (guest Wi-Fi, some company networks)
-falls back to a WebSocket at `wss://sfu.<domain>/call/fallback` on TCP 443, at lower call quality
+falls back to a WebSocket at `wss://sfu.<domain>/call/ws` on TCP 443, at lower call quality
 ("Limited network, call quality may be lower" in the call bar). The server offers that URL with every
-join token from TeamCraft 1.0.20 on; the route goes through the reverse proxy:
+join token; the path is `/call/ws` from TeamCraft#TBD on (releases from 1.0.20 before it use
+`/call/fallback`, which isn't routed). The route goes through the reverse proxy:
 
 - The SFU listens for it on the upstream address only, `127.0.0.1:8082`
   (`TEAMCRAFT_SFU_FALLBACK_BIND`, from `teamcraft_upstream_address` and `teamcraft_ports.sfu_fallback`).
   It runs with host networking, so the image's default `[::]:8082` would be plain HTTP on every
   address of the host. When `teamcraft_upstream_address` isn't loopback, the role also sets
   `TEAMCRAFT_SFU_FALLBACK_TRUSTED_PROXIES` to it, so the SFU counts its limits per client.
-- Caddy sends exactly `/call/fallback` on the SFU's host name there; every other path still gets the
+- Caddy sends exactly `/call/ws` on the SFU's host name there; every other path still gets the
   placeholder. Behind your own proxy, the generated configurations do the same
   ([../reverse-proxy.md](../reverse-proxy.md#what-the-proxy-has-to-do)).
 - The fallback's connections need about 1,216 file descriptors at the SFU's defaults: the container
@@ -41,7 +42,7 @@ Checked by `just self-check`; by hand, from outside the server:
 ```sh
 curl -sS -o /dev/null -w '%{http_code}\n' --http1.1 --max-time 10 \
   -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \
-  -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' https://sfu.chat.example.com/call/fallback
+  -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' https://sfu.chat.example.com/call/ws
 ```
 
 - `101`: the route works (the SFU closes the connection 3 s later for want of a `join`).

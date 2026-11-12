@@ -19,7 +19,7 @@ Environment=TEAMCRAFT_SFU_BIND=[::]:{{ teamcraft_ports.sfu }}
 # Health and host controls (called by the server): loopback only.
 Environment=TEAMCRAFT_SFU_HEALTH_BIND=127.0.0.1:{{ teamcraft_ports.sfu_control }}
 # Call fallback (WebSocket over TCP for clients whose network blocks UDP), reached through the proxy at
-# wss://{{ teamcraft_sfu_hostname }}/call/fallback. Plain HTTP: on the upstream address only, as the image's
+# wss://{{ teamcraft_sfu_hostname }}/call/ws. Plain HTTP: on the upstream address only, as the image's
 # [::]:8082 would be every address of the host (Network=host).
 Environment=TEAMCRAFT_SFU_FALLBACK_BIND={{ teamcraft_upstream_host }}:{{ teamcraft_ports.sfu_fallback }}
 {% if not (teamcraft_upstream_address is match('127[.]') or teamcraft_upstream_address == '::1') %}

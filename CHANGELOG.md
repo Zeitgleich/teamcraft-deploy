@@ -24,9 +24,10 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - The SFU's call fallback goes through the reverse proxy (TeamCraft#1226): clients whose network blocks
-  UDP reach the SFU over a WebSocket at `wss://<teamcraft_sfu_hostname>/call/fallback` on TCP 443
-  (TeamCraft 1.0.20 or later offers it). New loopback port `teamcraft_ports.sfu_fallback` (8082),
-  checked by the preflight. Caddy routes exactly `/call/fallback` on the SFU's name to it, with
+  UDP reach the SFU over a WebSocket at `wss://<teamcraft_sfu_hostname>/call/ws` on TCP 443. The path
+  needs a TeamCraft release that serves `/call/ws` (TeamCraft#TBD; earlier releases call it
+  `/call/fallback`, which the proxies don't route). New loopback port `teamcraft_ports.sfu_fallback` (8082),
+  checked by the preflight. Caddy routes exactly `/call/ws` on the SFU's name to it, with
   `stream_close_delay 5m`; the generated nginx, Plesk, Apache, HAProxy and Traefik configurations have a
   site for the SFU's name with that route, which so far only had a certificate. Behind Plesk, when the
   SFU's name is an alias of the chat domain, `teamcraft_proxy_sfu_plesk_domain` puts the location into

@@ -123,7 +123,7 @@
 {% elif kind == 'sfu' %}
 {{ i }}# Call fallback: a WebSocket to the SFU for clients whose network blocks UDP (calls otherwise go to
 {{ i }}# udp/{{ teamcraft_ports.sfu }} directly). Exact match ("="): a plain prefix location would lose to a regex one.
-{{ i }}location = /call/fallback {
+{{ i }}location = /call/ws {
 {{ i }}    proxy_pass {{ upstream }};
 {{ i }}    proxy_http_version 1.1;
 {{ i }}    proxy_set_header Upgrade $http_upgrade;

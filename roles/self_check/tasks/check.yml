@@ -48,10 +48,11 @@
 # The WebSocket for clients whose network blocks UDP: the proxy must hand the upgrade to the SFU. 101:
 # the SFU took it (and closes it after 3 s without a join); 401: the SFU too, with
 # TEAMCRAFT_SFU_FALLBACK_REQUIRE_UPGRADE_TOKEN=1. 200 or 404: the request ended at the proxy or the chat
-# server; 502/504: the proxy can't reach the SFU's port.
+# server, or the SFU is older than the /call/ws path (TeamCraft#TBD); 502/504: the proxy can't reach the
+# SFU's port.
 - name: Call fallback reaches the SFU through the proxy
   ansible.builtin.uri:
-    url: "https://{{ teamcraft_sfu_hostname }}/call/fallback"
+    url: "https://{{ teamcraft_sfu_hostname }}/call/ws"
     headers:
       Connection: Upgrade
       Upgrade: websocket

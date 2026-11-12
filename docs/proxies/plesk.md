@@ -163,7 +163,7 @@ fallback, the WebSocket for clients whose network blocks UDP; Plesk keeps answer
 that name:
 
 ```nginx
-location = /call/fallback {
+location = /call/ws {
     proxy_pass http://127.0.0.1:8082;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
@@ -221,5 +221,5 @@ sudo grep -c proxy_pass /var/www/vhosts/system/chat.example.com/conf/vhost_nginx
 | web client loads without scripts or styles     | *Serve static files directly by nginx* is on for the domain              |
 | the Plesk default page instead of TeamCraft     | directives not saved on this domain, or the wrong domain                |
 | calls ring but never connect                    | udp/3478 closed (Plesk firewall, hoster), or the SFU certificate failed |
-| calls fail only on networks that block UDP      | the SFU's `location = /call/fallback` not pasted, or on the wrong domain |
+| calls fail only on networks that block UDP      | the SFU's `location = /call/ws` not pasted, or on the wrong domain |
 | SFU certificate copy fails after a renewal      | `journalctl -u teamcraft-sfu-cert.service`: the file it names, and why  |
