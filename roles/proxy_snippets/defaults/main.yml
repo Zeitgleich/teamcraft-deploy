@@ -16,11 +16,6 @@ proxy_snippets_sites: >-
 # Every name that needs a certificate.
 proxy_snippets_hostnames: >-
   {{ proxy_snippets_sites | map('regex_replace', '^[^ ]+ ', '') | map('regex_replace', ' [^ ]+$', '') | list }}
-# Plesk: one directives file per domain. With teamcraft_proxy_sfu_alias_of, the SFU's location goes into
-# that domain's file instead of one of its own.
-proxy_snippets_plesk_sites: >-
-  {{ proxy_snippets_sites | reject('match', '^sfu ') | list if teamcraft_proxy_sfu_alias_of | length > 0
-     else proxy_snippets_sites }}
 # Origins of the web client, allowed to use S3 directly (CORS).
 proxy_snippets_web_origins: "{{ teamcraft_web_hostnames | map('regex_replace', '^', 'https://') | list }}"
 proxy_snippets_web_origins_regex: "^({{ proxy_snippets_web_origins | map('regex_escape') | join('|') }})$"

@@ -48,12 +48,8 @@ For each host name – `chat.example.com`, `sfu.chat.example.com`, `id.chat.exam
 
 The SFU's domain gets Plesk's certificate (which the SFU uses on udp/3478) and one location, its call
 fallback for networks that block UDP ([step 3](#3-nginx-directives-per-domain)). It can also be an
-**alias** of the chat domain instead of a domain of its own, with one certificate for all names: then
-tell the playbook, so the fallback's location goes into the chat domain's directives:
-
-```yaml
-teamcraft_proxy_sfu_alias_of: chat.example.com
-```
+**alias** of the chat domain instead of a domain of its own, with one certificate for all names: the
+chat domain's directives have that location as well, so both work without a setting.
 
 ## 2. Playbook
 
@@ -98,8 +94,8 @@ the file). If your Plesk keeps it elsewhere, point the setting there.
 ## 3. nginx directives per domain
 
 For `chat.example.com`, `sfu.chat.example.com`, `id.chat.example.com`, `s3.chat.example.com` (and
-`cal.`, brand host names). With `teamcraft_proxy_sfu_alias_of` there is no file for the SFU's name;
-its location is at the end of that domain's file.
+`cal.`, brand host names). If the SFU's name is an alias of the chat domain, skip its file: its
+location is also at the end of the chat domain's.
 
 1. **Websites & Domains → the domain → Apache & nginx Settings**.
 2. Under *nginx settings*, turn **Serve static files directly by nginx** off. Its regex location for
@@ -176,8 +172,8 @@ location = /call/ws {
 ```
 
 Keep the `=`: without it, the chat domain's regex catch-all would win and send the fallback to the chat
-server. As an alias, the location answers on the chat domain's other names too; only clients given the
-SFU's URL ask for it.
+server. In the chat domain's file the location answers on its other names too (and, with the SFU as a
+domain of its own, isn't used); only clients given the SFU's URL ask for it.
 
 Plesk regenerates a domain's configuration whenever you change its settings and keeps your additional
 directives; it never sees TeamCraft otherwise. After a playbook change of ports, host names or

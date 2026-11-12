@@ -45,7 +45,6 @@ Then `just setup-all` (not `install-all`: switching from Caddy needs Caddy remov
 | `teamcraft_sfu_certificate_nginx_conf`                              | –                                           | instead: the nginx file that names them (Plesk)                                               |
 | `teamcraft_proxy_certificate_path` / `_key_path`                    | `/etc/letsencrypt/live/{host}/fullchain.pem` | what the generated nginx/Apache files use per host name                                     |
 | `teamcraft_proxy_snippets_dir`                                      | `/srv/teamcraft/reverse-proxy`              | where the generated files go                                                                  |
-| `teamcraft_proxy_sfu_alias_of`                                      | –                                           | the host name whose site has the SFU's name as an alias, e.g. a Plesk domain ([proxies/plesk.md](proxies/plesk.md)) |
 | `teamcraft_preflight_enabled`                                       | `true`                                      | the checks below                                                                              |
 
 Each service binds one address: `127.0.0.1` (default) or `::1`. Both at once is not possible, and not

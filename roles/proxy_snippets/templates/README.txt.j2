@@ -25,9 +25,8 @@ Host names and where they go ({{ teamcraft_upstream_host }} is this host's loopb
   {{ teamcraft_sfu_hostname }}: only /call/ws goes through the proxy (the WebSocket for clients whose
   network blocks UDP). Calls go to the SFU itself on udp/{{ teamcraft_ports.sfu }}, with a copy of this name's
   certificate ({{ teamcraft_cert_dir }}/sfu.crt, from {{ teamcraft_sfu_certificate_nginx_conf or teamcraft_sfu_certificate_path or 'not set' }})
-{% if teamcraft_proxy_sfu_alias_of | length > 0 %}
-  An alias of {{ teamcraft_proxy_sfu_alias_of }} (teamcraft_proxy_sfu_alias_of): Plesk has its location in plesk/{{ teamcraft_proxy_sfu_alias_of }}.conf.
-{% endif %}
+  Plesk: plesk/{{ teamcraft_sfu_hostname }}.conf when it is a domain of its own; as an alias of {{ teamcraft_domain }},
+  plesk/{{ teamcraft_domain }}.conf has the location too.
 {% endif %}
 
 Every proxy must: pass Host unchanged; set X-Forwarded-For (the client's address), -Proto and -Host;
