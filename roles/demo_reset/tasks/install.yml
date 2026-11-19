@@ -88,7 +88,7 @@
 
 - name: Seed devices that stay online (demo-peers)
   ansible.builtin.include_tasks: peers.yml
-  when: demo_peers_binary | length > 0
+  when: demo_reset_peers_binary | length > 0
 
 - name: Timer
   ansible.builtin.systemd_service:

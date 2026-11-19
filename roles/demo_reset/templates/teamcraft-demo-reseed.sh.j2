@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Managed by Ansible (teamcraft-deploy, role demo_reset). Seeds the demo instance from scratch:
-# empties the database, the bucket and the seed devices' stores, runs demo-seed (as {{ demo_peers_user }}),
+# empties the database, the bucket and the seed devices' stores, runs demo-seed (as {{ demo_reset_peers_user }}),
 # takes the snapshot the nightly reset restores, and starts demo-peers. Asks first; --yes skips that.
 set -euo pipefail
 if [[ "${1:-}" != --yes ]]; then
@@ -31,7 +31,7 @@ DEMO_RECOVERY_PASSPHRASE="$(cat {{ base_secrets_dir }}/demo_recovery_passphrase)
 export DEMO_RECOVERY_PASSPHRASE
 # runuser keeps the environment; the passwords are read here, as root.
 (cd / && /usr/local/lib/teamcraft-demo/with-dev-token-passwords \
-  runuser -u {{ demo_peers_user }} -- /usr/local/lib/teamcraft-demo/demo-seed)
+  runuser -u {{ demo_reset_peers_user }} -- /usr/local/lib/teamcraft-demo/demo-seed)
 log "taking the snapshot"
 /usr/local/sbin/teamcraft-demo-reset snapshot
 log "done"

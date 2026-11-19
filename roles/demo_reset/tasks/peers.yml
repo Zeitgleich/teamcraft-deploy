@@ -1,6 +1,6 @@
 - name: Service user of demo-peers
   ansible.builtin.user:
-    name: "{{ demo_peers_user }}"
+    name: "{{ demo_reset_peers_user }}"
     system: true
     shell: /usr/sbin/nologin
     home: /var/lib/teamcraft-demo
@@ -10,20 +10,20 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ demo_peers_user }}"
-    group: "{{ demo_peers_user }}"
+    owner: "{{ demo_reset_peers_user }}"
+    group: "{{ demo_reset_peers_user }}"
     mode: "0700"
   loop:
     - /var/lib/teamcraft-demo
-    - "{{ demo_peers_stores_dir }}"
+    - "{{ demo_reset_peers_stores_dir }}"
 
 - name: Binaries
   ansible.builtin.copy:
     src: "{{ item.src }}"
     dest: "/usr/local/lib/teamcraft-demo/{{ item.name }}"
     mode: "0755"
-  loop: "{{ [{'src': demo_peers_binary, 'name': 'demo-peers'}]
-            + ([{'src': demo_seed_binary, 'name': 'demo-seed'}] if demo_seed_binary | length > 0 else []) }}"
+  loop: "{{ [{'src': demo_reset_peers_binary, 'name': 'demo-peers'}]
+            + ([{'src': demo_reset_seed_binary, 'name': 'demo-seed'}] if demo_reset_seed_binary | length > 0 else []) }}"
   register: demo_reset_peers_binaries
 
 # The Dex passwords stay in the secrets directory: the unit hands them over as credentials
@@ -46,7 +46,7 @@
     src: teamcraft-demo-reseed.sh.j2
     dest: /usr/local/sbin/teamcraft-demo-reseed
     mode: "0755"
-  when: demo_seed_binary | length > 0
+  when: demo_reset_seed_binary | length > 0
 
 - name: Unit of demo-peers
   ansible.builtin.template:

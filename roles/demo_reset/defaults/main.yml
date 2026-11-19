@@ -21,18 +21,18 @@ demo_reset_log_file: /var/log/teamcraft-demo-reset.log
 # demo-peers --bin demo-seed`, built for the host's glibc): keeps the seed users' devices online, so
 # that a reviewer's new device is let into the conversations and can write. Paths of the two binaries
 # on the control machine; empty: not installed (reviewers can only read).
-demo_peers_binary: ""
-demo_seed_binary: ""
-demo_peers_user: tc-demo
+demo_reset_peers_binary: ""
+demo_reset_seed_binary: ""
+demo_reset_peers_user: tc-demo
 # The seed devices' stores (SQLCipher + key): demo-seed writes them, demo-peers runs them, the reset
 # puts them back with the database.
-demo_peers_stores_dir: /var/lib/teamcraft-demo/peers
-demo_peers_memory_max: 96M
+demo_reset_peers_stores_dir: /var/lib/teamcraft-demo/peers
+demo_reset_peers_memory_max: 96M
 # The seed users' logins are <name><suffix> (dex_users' e-mail addresses).
-demo_peers_login_suffix: "@example.com"
+demo_reset_peers_login_suffix: "@example.com"
 # Which Dex password (dex_users' `password`, /srv/teamcraft/secrets/dex_password_<name>) goes into
 # which variable of dev/dev-token.py: the seed's shared one, then the users with their own.
-demo_peers_passwords:
+demo_reset_peers_passwords:
   DEV_TOKEN_PASSWORD: seed
   DEV_TOKEN_PASSWORD_OWNER: owner
   DEV_TOKEN_PASSWORD_REVIEWER_1: reviewer_1

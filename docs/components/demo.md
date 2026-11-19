@@ -43,7 +43,7 @@ A reviewer's new device restores its keys with the passphrase, but it can only w
 already in each conversation lets it in. `demo-peers` (TeamCraft `tests/e2e`, TeamCraft#2170) keeps
 the seed users' devices (owner, alex, sam, robin) online for that, from the stores the seeding run
 wrote, and answers a reviewer's direct message once. It runs as `teamcraft-demo-peers.service`
-(user `tc-demo`, stores in `demo_peers_stores_dir`); the Dex passwords reach it as systemd
+(user `tc-demo`, stores in `demo_reset_peers_stores_dir`); the Dex passwords reach it as systemd
 credentials, never through a file of its own. Build both binaries for the host's glibc, e.g. in a
 `rust:<version>-trixie` container for Debian 13 (with `libasound2-dev`, `libpipewire-0.3-dev`,
 `libgstreamer1.0-dev` and `libgstreamer-plugins-base1.0-dev` installed for the build):
@@ -52,7 +52,7 @@ credentials, never through a file of its own. Build both binaries for the host's
 cargo build --release -p teamcraft-e2e --features e2e --bin demo-peers --bin demo-seed
 ```
 
-and set `demo_peers_binary` / `demo_seed_binary` to them. Without them reviewers can only read.
+and set `demo_reset_peers_binary` / `demo_reset_seed_binary` to them. Without them reviewers can only read.
 
 ## Setting it up
 
