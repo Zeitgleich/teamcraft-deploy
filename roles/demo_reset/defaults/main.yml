@@ -1,9 +1,13 @@
 # Nightly reset of a demo instance (store reviews) to its seed: TeamCraft's dev/demo/demo-reset.sh
 # with a systemd timer, as root (docs/components/demo.md). Off by default; it wipes the database.
 demo_reset_enabled: false
-# The script of the deployed release (public repository); its own checks refuse a database or bucket
-# without "demo" in the name (teamcraft_db_name, teamcraft_s3_bucket).
-demo_reset_script_url: "https://raw.githubusercontent.com/Zeitgleich/TeamCraft/v{{ teamcraft_version }}/dev/demo/demo-reset.sh"
+# The TeamCraft revision the demo's scripts come from (public repository): the deployed release, or a
+# commit when the demo needs a change that isn't released yet. demo-reset.sh's own checks refuse a
+# database or bucket without "demo" in the name (teamcraft_db_name, teamcraft_s3_bucket).
+demo_reset_source_ref: "v{{ teamcraft_version }}"
+demo_reset_script_url: "https://raw.githubusercontent.com/Zeitgleich/TeamCraft/{{ demo_reset_source_ref }}/dev/demo/demo-reset.sh"
+# Signs the seed users in at the identity provider for demo-peers and demo-seed (python3, stdlib only).
+demo_reset_dev_token_url: "https://raw.githubusercontent.com/Zeitgleich/TeamCraft/{{ demo_reset_source_ref }}/dev/dev-token.py"
 # Database dump and bucket copy taken by `teamcraft-demo-reset snapshot` after the seeding run.
 demo_reset_seed_dir: "{{ teamcraft_base_dir }}/demo-seed"
 # When it runs (systemd OnCalendar), at a quiet hour.
@@ -12,3 +16,24 @@ demo_reset_on_calendar: "*-*-* 03:00:00 UTC"
 # stays in the journal (systemctl status teamcraft-demo-reset).
 demo_reset_on_failure: ""
 demo_reset_log_file: /var/log/teamcraft-demo-reset.log
+
+# demo-peers (TeamCraft tests/e2e, `cargo build --release -p teamcraft-e2e --features e2e --bin
+# demo-peers --bin demo-seed`, built for the host's glibc): keeps the seed users' devices online, so
+# that a reviewer's new device is let into the conversations and can write. Paths of the two binaries
+# on the control machine; empty: not installed (reviewers can only read).
+demo_peers_binary: ""
+demo_seed_binary: ""
+demo_peers_user: tc-demo
+# The seed devices' stores (SQLCipher + key): demo-seed writes them, demo-peers runs them, the reset
+# puts them back with the database.
+demo_peers_stores_dir: /var/lib/teamcraft-demo/peers
+demo_peers_memory_max: 96M
+# The seed users' logins are <name><suffix> (dex_users' e-mail addresses).
+demo_peers_login_suffix: "@example.com"
+# Which Dex password (dex_users' `password`, /srv/teamcraft/secrets/dex_password_<name>) goes into
+# which variable of dev/dev-token.py: the seed's shared one, then the users with their own.
+demo_peers_passwords:
+  DEV_TOKEN_PASSWORD: seed
+  DEV_TOKEN_PASSWORD_OWNER: owner
+  DEV_TOKEN_PASSWORD_REVIEWER_1: reviewer_1
+  DEV_TOKEN_PASSWORD_REVIEWER_2: reviewer_2

@@ -31,32 +31,50 @@ which the kernel reclaims under pressure); "anon" is what can't be reclaimed:
 | Dex              | 64m   | 46 MiB  | 15 MiB |
 | TeamCraft server | 256m  | 87 MiB  | 27 MiB |
 | TeamCraft SFU    | 128m  | 55 MiB  | 5 MiB  |
-| **Total**        |       | 351 MiB | 68 MiB |
+| demo-peers       | 96M   | 19 MiB  |        |
+| **Total**        |       | 370 MiB |        |
 
 About 20 MiB of each slice is the user's `systemd --user` and dbus. The bundled Caddy (96m limit)
 comes on top when no proxy runs on the host already.
+
+## Seed devices that stay online (demo-peers)
+
+A reviewer's new device restores its keys with the passphrase, but it can only write once a device
+already in each conversation lets it in. `demo-peers` (TeamCraft `tests/e2e`, TeamCraft#2170) keeps
+the seed users' devices (owner, alex, sam, robin) online for that, from the stores the seeding run
+wrote, and answers a reviewer's direct message once. It runs as `teamcraft-demo-peers.service`
+(user `tc-demo`, stores in `demo_peers_stores_dir`); the Dex passwords reach it as systemd
+credentials, never through a file of its own. Build both binaries for the host's glibc, e.g. in a
+`rust:<version>-trixie` container for Debian 13 (with `libasound2-dev`, `libpipewire-0.3-dev`,
+`libgstreamer1.0-dev` and `libgstreamer-plugins-base1.0-dev` installed for the build):
+
+```sh
+cargo build --release -p teamcraft-e2e --features e2e --bin demo-peers --bin demo-seed
+```
+
+and set `demo_peers_binary` / `demo_seed_binary` to them. Without them reviewers can only read.
 
 ## Setting it up
 
 1. Install with the example's settings (`just install-all`), with DNS for `<domain>`, `sfu.<domain>`,
    `s3.<domain>` and `id.<domain>` (Dex).
-2. Seed it once from a machine with the TeamCraft repository at the deployed release
-   (`git worktree add ../seed v<teamcraft_version>`): TeamCraft `docs/operations.md`, "Setting it up",
-   step 2, with `E2E_DEPLOYED_URL=https://<domain>`, `DEV_TOKEN_ISSUER=https://id.<domain>` and the
-   passwords from `/srv/teamcraft/secrets/dex_password_{seed,owner,reviewer_1,reviewer_2}` on the host
-   (pass them through the environment, never on a command line others see). Choose a recovery
-   passphrase for the reviewers (`DEMO_RECOVERY_PASSPHRASE`) and keep it with their passwords.
-3. Take the seed on the host: `teamcraft-demo-reset snapshot` (stops the server, dumps the database,
-   copies the bucket to `/srv/teamcraft/demo-seed`, starts it again).
-4. Sign in on a phone as a reviewer and check the channels, messages and files.
-5. Give the stores the reviewer's e-mail address, password and recovery passphrase (App Store Connect:
+2. Seed it on the host: `teamcraft-demo-reseed` empties the database, the bucket and the seed
+   stores, runs `demo-seed` with the generated Dex passwords and the recovery passphrase
+   (`/srv/teamcraft/secrets/demo_recovery_passphrase`), takes the snapshot and starts demo-peers.
+   Run it again whenever the seed must change (or after changing the identity provider: its users
+   become new TeamCraft accounts).
+3. Sign in on a phone as a reviewer, restore with the passphrase, and send a message: it must go
+   out, and a direct message to Alex gets an answer.
+4. Give the stores the reviewer's e-mail address, password and recovery passphrase (App Store Connect:
    App Review Information; Play Console: App access). They never go into a repository.
 
 ## Reset
 
 `teamcraft-demo-reset.timer` runs `teamcraft-demo-reset restore` every night (`demo_reset_on_calendar`,
-03:00 UTC): it stops the server, empties the database and restores the seed's dump, makes the bucket
-equal to the seed's copy, starts the server and waits until it is ready. Every step goes to the
+03:00 UTC): it stops demo-peers and the server, restores the seed's dump, makes the bucket equal to
+the seed's copy, puts the seed devices' stores back (all three from the same snapshot, so the
+devices' groups match the database), starts the server, waits until it is ready, and starts
+demo-peers. Every step goes to the
 journal and `/var/log/teamcraft-demo-reset.log`; a failure leaves the unit failed and starts
 `demo_reset_on_failure` if set.
 

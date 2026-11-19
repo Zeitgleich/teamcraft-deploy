@@ -1,0 +1,29 @@
+# Managed by Ansible (teamcraft-deploy, role demo_reset). The seed users' devices, online, so that
+# reviewers' new devices are let into the conversations (TeamCraft docs/operations.md, "Demo instance").
+[Unit]
+Description=TeamCraft demo: seed devices that stay online
+Wants=network-online.target
+After=network-online.target
+# Nothing to run before the first seeding.
+ConditionDirectoryNotEmpty={{ demo_peers_stores_dir }}
+
+[Service]
+User={{ demo_peers_user }}
+Group={{ demo_peers_user }}
+EnvironmentFile=/etc/teamcraft-demo-peers.env
+{% for name in demo_peers_passwords.values() | unique %}
+LoadCredential=dex_password_{{ name }}:{{ base_secrets_dir }}/dex_password_{{ name }}
+{% endfor %}
+ExecStart=/usr/local/lib/teamcraft-demo/with-dev-token-passwords /usr/local/lib/teamcraft-demo/demo-peers
+KillSignal=SIGTERM
+Restart=on-failure
+RestartSec=30s
+MemoryMax={{ demo_peers_memory_max }}
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths={{ demo_peers_stores_dir }}
+
+[Install]
+WantedBy=multi-user.target

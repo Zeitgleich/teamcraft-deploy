@@ -14,24 +14,40 @@
     name: [rclone, curl, util-linux]
     state: present
 
+# The scripts and binaries are no secret; demo-peers runs them as its own user.
 - name: Directories
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ item.path }}"
     state: directory
     owner: root
     group: root
-    mode: "0700"
+    mode: "{{ item.mode }}"
   loop:
-    - /usr/local/lib/teamcraft-demo
-    - /usr/local/lib/teamcraft-demo/bin
-    - "{{ demo_reset_seed_dir }}"
+    - {path: /usr/local/lib/teamcraft-demo, mode: "0755"}
+    - {path: /usr/local/lib/teamcraft-demo/bin, mode: "0700"}
+    - {path: "{{ demo_reset_seed_dir }}", mode: "0700"}
 
-- name: Reset script of the release
+- name: Scripts of the TeamCraft revision
   ansible.builtin.get_url:
-    url: "{{ demo_reset_script_url }}"
-    dest: /usr/local/lib/teamcraft-demo/demo-reset.sh
+    url: "{{ item.url }}"
+    dest: "/usr/local/lib/teamcraft-demo/{{ item.name }}"
     mode: "0755"
     force: true
+  loop:
+    - {url: "{{ demo_reset_script_url }}", name: demo-reset.sh}
+    - {url: "{{ demo_reset_dev_token_url }}", name: dev-token.py}
+
+# The passphrase every seed user's key backup opens with; reviewers type it. Letters and digits in
+# four groups. Delete the file and seed again (teamcraft-demo-reseed) to change it.
+- name: Recovery passphrase of the seed
+  ansible.builtin.shell: |
+    set -euo pipefail
+    umask 077
+    p="$(openssl rand -base64 64 | tr -dc 'a-z0-9')"
+    printf '%s-%s-%s-%s' "${p:0:5}" "${p:5:5}" "${p:10:5}" "${p:15:5}" > "{{ base_secrets_dir }}/demo_recovery_passphrase"
+  args:
+    executable: /bin/bash
+    creates: "{{ base_secrets_dir }}/demo_recovery_passphrase"
 
 # psql, pg_dump and pg_restore of the Postgres container (the host's client may be older than the
 # server); the script calls them by name.
@@ -69,6 +85,10 @@
     dest: "/etc/systemd/system/{{ item }}"
     mode: "0644"
   loop: [teamcraft-demo-reset.service, teamcraft-demo-reset.timer]
+
+- name: Seed devices that stay online (demo-peers)
+  ansible.builtin.include_tasks: peers.yml
+  when: demo_peers_binary | length > 0
 
 - name: Timer
   ansible.builtin.systemd_service:

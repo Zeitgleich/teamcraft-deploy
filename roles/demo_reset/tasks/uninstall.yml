@@ -3,6 +3,13 @@
     path: /etc/systemd/system/teamcraft-demo-reset.timer
   register: demo_reset_timer
 
+- name: Stop demo-peers
+  ansible.builtin.systemd_service:
+    name: teamcraft-demo-peers.service
+    enabled: false
+    state: stopped
+  failed_when: false
+
 - name: Stop the timer
   ansible.builtin.systemd_service:
     name: teamcraft-demo-reset.timer
@@ -18,6 +25,9 @@
   loop:
     - /etc/systemd/system/teamcraft-demo-reset.timer
     - /etc/systemd/system/teamcraft-demo-reset.service
+    - /etc/systemd/system/teamcraft-demo-peers.service
+    - /etc/teamcraft-demo-peers.env
+    - /usr/local/sbin/teamcraft-demo-reseed
     - /usr/local/sbin/teamcraft-demo-reset
     - /etc/teamcraft-demo-reset.env
     - /usr/local/lib/teamcraft-demo
