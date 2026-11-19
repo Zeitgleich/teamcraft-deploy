@@ -6,6 +6,14 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `just self-check` failed on the call fallback (`/call/ws` answered 502) although calls worked: the
+  check used Ansible's `uri` module, whose urllib always sends `Connection: close`, so the WebSocket
+  upgrade never reached the SFU. It uses curl now.
+- The dry run's end-to-end test aborted with a stack overflow: it runs with TeamCraft's
+  `RUST_MIN_STACK` (16 MiB) now, as TeamCraft's own `scripts/e2e.sh` does.
+
 ### Changed
 
 - The SFU's call fallback listens on the upstream address only (`127.0.0.1:8082` by default,

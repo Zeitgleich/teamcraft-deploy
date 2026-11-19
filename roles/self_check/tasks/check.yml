@@ -49,18 +49,19 @@
 # the SFU took it (and closes it after 3 s without a join); 401: the SFU too, with
 # TEAMCRAFT_SFU_FALLBACK_REQUIRE_UPGRADE_TOKEN=1. 200 or 404: the request ended at the proxy or the chat
 # server, or the SFU is older than the /call/ws path (TeamCraft#TBD); 502/504: the proxy can't reach the
-# SFU's port.
+# SFU's port. curl, not the uri module: Python's urllib always sends "Connection: close", so the upgrade
+# never reaches the SFU and the proxy answers 502.
 - name: Call fallback reaches the SFU through the proxy
-  ansible.builtin.uri:
-    url: "https://{{ teamcraft_sfu_hostname }}/call/ws"
-    headers:
-      Connection: Upgrade
-      Upgrade: websocket
-      Sec-WebSocket-Version: "13"
-      Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
-    status_code: [101, 401]
-    timeout: 15
-    validate_certs: "{{ self_check_validate_certs }}"
+  ansible.builtin.command:
+    argv: "{{ ['curl', '-sS', '--http1.1', '--max-time', '15', '-o', '/dev/null', '-w', '%{http_code}',
+               '-H', 'Connection: Upgrade', '-H', 'Upgrade: websocket', '-H', 'Sec-WebSocket-Version: 13',
+               '-H', 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==']
+              + ([] if self_check_validate_certs | bool else ['--insecure'])
+              + ['https://' ~ teamcraft_sfu_hostname ~ '/call/ws'] }}"
+  register: self_check_call_fallback
+  # The status line counts; curl may end with a timeout while the SFU holds the upgraded connection.
+  failed_when: self_check_call_fallback.stdout not in ['101', '401']
+  changed_when: false
   delegate_to: localhost
   become: false
   when: teamcraft_sfu_enabled and teamcraft_server_enabled
