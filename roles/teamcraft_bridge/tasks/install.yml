@@ -30,6 +30,7 @@
     base_service:
       name: teamcraft-bridge
       user: tc-bridge
+      pulls_teamcraft_images: true
       secrets: >-
         {{ teamcraft_bridge_secrets | dict2items | selectattr('value') | items2dict
            | combine({'bridge_config': teamcraft_bridge_config}) }}

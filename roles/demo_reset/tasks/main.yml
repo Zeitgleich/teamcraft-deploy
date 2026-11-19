@@ -1,0 +1,15 @@
+- name: Install
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [setup-all, install-all, setup-demo-reset, install-demo-reset]
+  when: demo_reset_enabled
+  tags: [setup-all, install-all, setup-demo-reset, install-demo-reset]
+
+- name: Uninstall
+  ansible.builtin.include_tasks:
+    file: uninstall.yml
+    apply:
+      tags: [setup-all, setup-demo-reset]
+  when: not demo_reset_enabled
+  tags: [setup-all, setup-demo-reset]

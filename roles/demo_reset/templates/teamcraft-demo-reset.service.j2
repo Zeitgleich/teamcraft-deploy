@@ -1,0 +1,13 @@
+# Managed by Ansible (teamcraft-deploy, role demo_reset).
+[Unit]
+Description=Reset the TeamCraft demo instance to its seed
+Wants=network-online.target
+After=network-online.target
+{% if demo_reset_on_failure | length > 0 %}
+OnFailure={{ demo_reset_on_failure }}
+{% endif %}
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/teamcraft-demo-reset restore
+TimeoutStartSec=30min

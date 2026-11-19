@@ -9,6 +9,8 @@
     - role: postgres
     - role: garage
     - role: keycloak
+    # Optional, off by default: a small identity provider with a fixed user list (docs/components/dex.md).
+    - role: dex
     - role: caddy
     # Without Caddy: configurations for your own proxy (docs/reverse-proxy.md).
     - role: proxy_snippets
@@ -23,6 +25,8 @@
     # Optional, off by default: error tracking for the apps' crash reports (docs/components/glitchtip.md).
     - role: glitchtip
     - role: backups
+    # Optional, off by default: nightly reset of a demo instance to its seed (docs/components/demo.md).
+    - role: demo_reset
     # Their tasks carry their own tags (start, stop, self-check).
     - role: services
     - role: self_check

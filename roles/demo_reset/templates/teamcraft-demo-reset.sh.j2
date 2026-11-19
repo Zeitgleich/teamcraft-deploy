@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Managed by Ansible (teamcraft-deploy, role demo_reset).
+#   teamcraft-demo-reset snapshot   after the seeding run (docs/components/demo.md)
+#   teamcraft-demo-reset restore    what the nightly timer runs
+#   teamcraft-demo-reset check      checks settings and seed, changes nothing
+set -euo pipefail
+set -a
+# shellcheck disable=SC1091
+. /etc/teamcraft-demo-reset.env
+set +a
+export PATH="/usr/local/lib/teamcraft-demo/bin:$PATH"
+exec /usr/local/lib/teamcraft-demo/demo-reset.sh "$@"

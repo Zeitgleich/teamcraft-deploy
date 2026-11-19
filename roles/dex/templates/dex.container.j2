@@ -1,0 +1,28 @@
+# Managed by Ansible (teamcraft-deploy, role dex). Runs rootless as tc-dex.
+[Unit]
+Description=TeamCraft identity provider (Dex)
+
+[Container]
+Image={{ dex_image }}
+ContainerName=teamcraft-dex
+# ".yml", not ".yaml": the image runs .yaml files through gomplate first.
+# Host network inside tc-dex's user namespace; HTTP on loopback only (the proxy terminates TLS).
+Network=host
+Exec=dex serve /etc/dex/dex.yml
+Volume=/home/tc-dex/config/dex.yml:/etc/dex/dex.yml:ro,Z
+# Refresh tokens and signing keys (sqlite).
+Volume=dex-data:/var/dex
+{% for name in dex_password_names %}
+Secret=dex_hash_{{ name }},type=env,target=DEX_HASH_{{ name | upper | regex_replace('[^A-Z0-9]', '_') }}
+{% endfor %}
+NoNewPrivileges=true
+DropCapability=ALL
+PodmanArgs=--memory={{ dex_memory }}
+LogDriver=journald
+
+[Service]
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=default.target

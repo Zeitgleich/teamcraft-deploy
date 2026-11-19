@@ -38,6 +38,12 @@ organization_claim = "{{ teamcraft_oidc_organization_claim }}"
 {% if teamcraft_server_oidc_jwks_uri | length > 0 %}
 jwks_uri = "{{ teamcraft_server_oidc_jwks_uri }}"
 {% endif %}
+{% if teamcraft_oidc_roles_claim | length > 0 %}
+roles_claim = "{{ teamcraft_oidc_roles_claim }}"
+{% endif %}
+{% if teamcraft_oidc_app_redirect_uris | length > 0 %}
+app_redirect_uris = {{ teamcraft_oidc_app_redirect_uris | to_json }}
+{% endif %}
 
 [oidc.roles]
 owner = "{{ teamcraft_server_oidc_roles.owner }}"

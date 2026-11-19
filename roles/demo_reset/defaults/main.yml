@@ -1,0 +1,14 @@
+# Nightly reset of a demo instance (store reviews) to its seed: TeamCraft's dev/demo/demo-reset.sh
+# with a systemd timer, as root (docs/components/demo.md). Off by default; it wipes the database.
+demo_reset_enabled: false
+# The script of the deployed release (public repository); its own checks refuse a database or bucket
+# without "demo" in the name (teamcraft_db_name, teamcraft_s3_bucket).
+demo_reset_script_url: "https://raw.githubusercontent.com/Zeitgleich/TeamCraft/v{{ teamcraft_version }}/dev/demo/demo-reset.sh"
+# Database dump and bucket copy taken by `teamcraft-demo-reset snapshot` after the seeding run.
+demo_reset_seed_dir: "{{ teamcraft_base_dir }}/demo-seed"
+# When it runs (systemd OnCalendar), at a quiet hour.
+demo_reset_on_calendar: "*-*-* 03:00:00 UTC"
+# A unit started when the reset fails (OnFailure=), e.g. one that sends an alert. Empty: the failure
+# stays in the journal (systemctl status teamcraft-demo-reset).
+demo_reset_on_failure: ""
+demo_reset_log_file: /var/log/teamcraft-demo-reset.log

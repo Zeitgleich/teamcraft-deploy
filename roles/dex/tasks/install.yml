@@ -1,0 +1,97 @@
+- name: Password names
+  ansible.builtin.set_fact:
+    dex_password_names: "{{ dex_users | map(attribute='password') | unique | list }}"
+
+- name: Tool for the bcrypt hashes (htpasswd)
+  ansible.builtin.apt:
+    name: apache2-utils
+    state: present
+
+# Typed by people (store reviewers, on a phone): letters and digits only, 20 of them.
+- name: Generate missing passwords
+  ansible.builtin.shell: |
+    set -euo pipefail
+    umask 077
+    # 64 random bytes give about 80 letters and digits in base64; 20 of them are kept.
+    pw="$(openssl rand -base64 64 | tr -dc 'A-Za-z0-9')"
+    printf '%s' "${pw:0:20}" > "{{ base_secrets_dir }}/dex_password_{{ item }}.new"
+    mv "{{ base_secrets_dir }}/dex_password_{{ item }}.new" "{{ base_secrets_dir }}/dex_password_{{ item }}"
+  args:
+    executable: /bin/bash
+    creates: "{{ base_secrets_dir }}/dex_password_{{ item }}"
+  loop: "{{ dex_password_names }}"
+
+# bcrypt is salted, so a hash is made once per password; delete dex_hash_<name> after changing a
+# password file by hand to have it hashed again. The password goes in on stdin, not the command line.
+- name: Hash new passwords
+  ansible.builtin.shell: |
+    set -euo pipefail
+    umask 077
+    htpasswd -niBC 10 "" < "{{ base_secrets_dir }}/dex_password_{{ item }}" | tr -d ':\n' > "{{ base_secrets_dir }}/dex_hash_{{ item }}.new"
+    mv "{{ base_secrets_dir }}/dex_hash_{{ item }}.new" "{{ base_secrets_dir }}/dex_hash_{{ item }}"
+  args:
+    executable: /bin/bash
+    creates: "{{ base_secrets_dir }}/dex_hash_{{ item }}"
+  loop: "{{ dex_password_names }}"
+
+- name: Read the hashes
+  ansible.builtin.slurp:
+    src: "{{ base_secrets_dir }}/dex_hash_{{ item }}"
+  loop: "{{ dex_password_names }}"
+  register: dex_hashes
+  no_log: true
+
+- name: Service user
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_user
+  vars:
+    base_service:
+      name: dex
+      user: tc-dex
+      secrets: >-
+        {{ dict(dex_hashes.results | map(attribute='item') | map('regex_replace', '^', 'dex_hash_')
+                | zip(dex_hashes.results | map(attribute='content') | map('b64decode'))) }}
+
+- name: Configuration
+  ansible.builtin.template:
+    src: dex.yml.j2
+    dest: /home/tc-dex/config/dex.yml
+    owner: tc-dex
+    group: tc-dex
+    mode: "0644"
+  register: dex_config
+
+- name: Quadlet unit
+  ansible.builtin.template:
+    src: dex.container.j2
+    dest: /home/tc-dex/.config/containers/systemd/dex.container
+    owner: tc-dex
+    group: tc-dex
+    mode: "0644"
+  register: dex_unit
+
+- name: Restart on change
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_changed
+  vars:
+    base_service_name: dex
+    base_service_changed: "{{ dex_unit.changed or dex_config.changed or base_service_secrets_changed }}"
+
+# Started now: the TeamCraft server fetches the provider's discovery document when it starts.
+- name: Start
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_start
+  vars:
+    base_service_name: dex
+    base_service_user: tc-dex
+
+- name: Wait for the provider
+  ansible.builtin.uri:
+    url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.dex }}/.well-known/openid-configuration"
+  register: dex_ready
+  until: dex_ready.status == 200
+  retries: 30
+  delay: 2

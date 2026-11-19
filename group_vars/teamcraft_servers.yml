@@ -5,6 +5,12 @@
 # release; docs/updating.md).
 teamcraft_version: "1.0.0"
 teamcraft_image_registry: ghcr.io/zeitgleich
+# Credentials for a private registry (e.g. pre-release images): a user name here and a token with
+# read access as the secret image_registry_token (sops file, or a file of that name in
+# base_secrets_dir on the host). Written to ~/.config/containers/auth.json of the services that pull
+# TeamCraft images only. Empty: anonymous pulls (public images).
+teamcraft_image_registry_username: ""
+teamcraft_image_registry_token: "{{ base_secrets.image_registry_token | default('') }}"
 
 # Reverse proxy: the bundled Caddy (TLS for every host name on 80/443), or false for one you already
 # run (nginx, Apache, Plesk, Traefik, HAProxy, another Caddy): the playbook then binds nothing public
@@ -46,20 +52,36 @@ teamcraft_preflight_enabled: true
 # Host names
 teamcraft_sfu_hostname: "sfu.{{ teamcraft_domain }}"
 keycloak_hostname: "id.{{ teamcraft_domain }}"
+dex_hostname: "id.{{ teamcraft_domain }}"
 garage_hostname: "s3.{{ teamcraft_domain }}"
 calcraft_hostname: "cal.{{ teamcraft_domain }}"
 # Optional error tracking for the apps' crash reports (glitchtip_enabled, docs/components/glitchtip.md).
 glitchtip_hostname: "glitchtip.{{ teamcraft_domain }}"
 
-# Identity provider: bundled Keycloak unless disabled.
+# Identity provider: bundled Keycloak unless disabled. Dex (dex_enabled) is a small alternative for
+# instances with a fixed user list, e.g. a demo instance (docs/components/dex.md); one of the two at most.
+# Both on a host name of their own: the web client's service worker serves only its signed release
+# (and /api/) on the server's name.
 keycloak_enabled: true
-teamcraft_oidc_issuer: "{{ ('https://' ~ keycloak_hostname ~ '/realms/' ~ keycloak_realm) if keycloak_enabled else '' }}"
+dex_enabled: false
+teamcraft_oidc_issuer: >-
+  {{ ('https://' ~ keycloak_hostname ~ '/realms/' ~ keycloak_realm) if keycloak_enabled
+     else (('https://' ~ dex_hostname) if dex_enabled else '') }}
 teamcraft_oidc_client_id: teamcraft
 # Confidential client of the TeamCraft server (deprovisioning sync).
 teamcraft_oidc_server_client: teamcraft-server
 # Scopes the apps ask for at sign-in. `offline_access` gives every device a long-lived refresh token,
 # so people stay signed in instead of following the provider's browser session (often 8-10 hours).
-teamcraft_oidc_app_scopes: ["openid", "profile", "email", "offline_access"]
+teamcraft_oidc_app_scopes: "{{ ['openid', 'profile', 'email', 'offline_access'] + (['groups'] if dex_enabled else []) }}"
+# Claim the server reads the roles from ([oidc] roles_claim). Empty: Keycloak's client roles
+# (resource_access.<client_id>.roles). Dex puts its static groups into `groups`.
+teamcraft_oidc_roles_claim: "{{ 'groups' if dex_enabled else '' }}"
+# Redirect URIs registered for the apps' client ([oidc] app_redirect_uris): an app whose URI is not
+# listed tells its user the server is not set up for it. Empty: not checked.
+teamcraft_oidc_app_redirect_uris: []
+
+# The server's database in the bundled Postgres (and in its backups).
+teamcraft_db_name: teamcraft
 
 # Storage: bundled Garage unless disabled.
 garage_enabled: true
@@ -101,6 +123,7 @@ teamcraft_port_defaults:
   sfu_fallback: 8082
   keycloak: 8180
   keycloak_management: 9180
+  dex: 5556
   garage_s3: 3900
   garage_rpc: 3901
   garage_admin: 3903
@@ -117,6 +140,7 @@ teamcraft_services:
   - {name: postgres, user: tc-db, enabled: "{{ postgres_enabled }}"}
   - {name: garage, user: tc-garage, enabled: "{{ garage_enabled }}"}
   - {name: keycloak, user: tc-keycloak, enabled: "{{ keycloak_enabled }}"}
+  - {name: dex, user: tc-dex, enabled: "{{ dex_enabled }}"}
   - {name: caddy, user: tc-proxy, enabled: "{{ caddy_enabled }}"}
   - {name: teamcraft-server, user: tc-server, enabled: "{{ teamcraft_server_enabled }}"}
   - {name: teamcraft-sfu, user: tc-sfu, enabled: "{{ teamcraft_sfu_enabled }}"}

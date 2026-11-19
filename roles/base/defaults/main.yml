@@ -36,6 +36,11 @@ base_firewall_open_sfu: true
 base_secrets_dir: "{{ teamcraft_base_dir }}/secrets"
 base_secrets_sops_file: ""
 
+# Secrets that can't be generated, read from a file of the same name in base_secrets_dir if it exists
+# (or given in the sops file): the token of a private image registry (teamcraft_image_registry_username).
+base_optional_secrets:
+  - image_registry_token
+
 # kind: hex (32 random bytes as hex), token (48 random bytes, base64), base64url32 (32 bytes,
 # base64url without padding), ed25519 (PEM private key), garage_key_id (GK + 24 hex characters).
 base_generated_secrets:

@@ -1,6 +1,7 @@
 # Helper (include_role base, tasks_from service_user): the unprivileged user a service runs as,
 # with lingering systemd --user, Quadlet directories and its podman secrets.
-# In:  base_service: {name, user, groups: [..], secrets: {podman secret name: value}}
+# In:  base_service: {name, user, groups: [..], secrets: {podman secret name: value},
+#                     pulls_teamcraft_images: bool (gets the registry login, if one is set)}
 # Out: base_service_uid, base_service_env, base_service_secrets_changed
 - name: "Service user: {{ base_service.name }}"
   ansible.builtin.user:
@@ -43,6 +44,24 @@
     - .config/systemd/user
     - .config/teamcraft-secrets
     - config
+
+# A private registry (teamcraft_image_registry_username): the login where podman looks when
+# XDG_RUNTIME_DIR has none, so it survives reboots. Only for services that pull TeamCraft images.
+- name: "Registry login: {{ base_service.name }}"
+  ansible.builtin.copy:
+    content: >-
+      {{ {'auths': {(teamcraft_image_registry | regex_replace('/.*$', '')):
+          {'auth': (teamcraft_image_registry_username ~ ':' ~ teamcraft_image_registry_token) | b64encode}}}
+         | to_nice_json }}
+    dest: "/home/{{ base_service.user }}/.config/containers/auth.json"
+    owner: "{{ base_service.user }}"
+    group: "{{ base_service.user }}"
+    mode: "0600"
+  when:
+    - base_service.pulls_teamcraft_images | default(false)
+    - teamcraft_image_registry_username | length > 0
+    - teamcraft_image_registry_token | length > 0
+  no_log: true
 
 - name: "Podman secrets: {{ base_service.name }}"
   ansible.builtin.shell: |

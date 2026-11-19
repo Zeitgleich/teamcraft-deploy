@@ -37,6 +37,7 @@
              {'proto': 'tcp', 'port': teamcraft_ports.sfu_fallback, 'user': 'tc-sfu'}] if teamcraft_sfu_enabled else [])
          + ([{'proto': 'tcp', 'port': teamcraft_ports.keycloak, 'user': 'tc-keycloak'},
              {'proto': 'tcp', 'port': teamcraft_ports.keycloak_management, 'user': 'tc-keycloak'}] if keycloak_enabled else [])
+         + ([{'proto': 'tcp', 'port': teamcraft_ports.dex, 'user': 'tc-dex'}] if dex_enabled else [])
          + ([{'proto': 'tcp', 'port': teamcraft_ports.garage_s3, 'user': 'tc-garage'},
              {'proto': 'tcp', 'port': teamcraft_ports.garage_rpc, 'user': 'tc-garage'},
              {'proto': 'tcp', 'port': teamcraft_ports.garage_admin, 'user': 'tc-garage'}] if garage_enabled else [])

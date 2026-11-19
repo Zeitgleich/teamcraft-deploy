@@ -29,6 +29,7 @@
     base_service:
       name: teamcraft-sfu
       user: tc-sfu
+      pulls_teamcraft_images: true
       groups: [tc-certs]
       secrets:
         sfu_registration_token: "{{ base_secrets.sfu_registration_token }}"

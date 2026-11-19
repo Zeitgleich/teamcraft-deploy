@@ -18,6 +18,7 @@ teamcraft_sfu_enabled: false
 teamcraft_bridge_enabled: false
 teamcraft_notetaker_enabled: false
 keycloak_enabled: false
+dex_enabled: false
 garage_enabled: false
 calcraft_enabled: false
 caddy_enabled: false

@@ -4,9 +4,12 @@ postgres_image: "docker.io/library/postgres:18.6-alpine3.24"
 postgres_memory: 2g
 # Databases with their owner role and the secret holding its password. Others can be added.
 postgres_databases:
-  - {name: teamcraft, owner: teamcraft, password_secret: teamcraft_db_password, enabled: true}
+  - {name: "{{ teamcraft_db_name }}", owner: teamcraft, password_secret: teamcraft_db_password, enabled: true}
   - {name: keycloak, owner: keycloak, password_secret: keycloak_db_password, enabled: "{{ keycloak_enabled }}"}
   - {name: glitchtip, owner: glitchtip, password_secret: glitchtip_db_password, enabled: "{{ glitchtip_enabled }}"}
 # Postgres' default is 64. GlitchTip's partitioned tables need more: a query that can't be narrowed to
 # one partition locks every partition and its indexes (its install docs ask for 512).
 postgres_max_locks_per_transaction: "{{ 512 if glitchtip_enabled else 64 }}"
+# Further server settings (postgres -c name=value), e.g. a small instance:
+#   postgres_settings: {shared_buffers: 32MB, max_connections: 20, work_mem: 2MB}
+postgres_settings: {}

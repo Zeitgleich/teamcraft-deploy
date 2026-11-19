@@ -6,6 +6,7 @@
     base_service:
       name: teamcraft-server
       user: tc-server
+      pulls_teamcraft_images: true
       secrets: "{{ teamcraft_server_secrets | dict2items | selectattr('value') | items2dict }}"
 
 - name: Configuration

@@ -9,6 +9,7 @@
 | [teamcraft-bridge.md](teamcraft-bridge.md)       | `teamcraft_bridge`      | off, webhooks and logs                       |
 | [teamcraft-notetaker.md](teamcraft-notetaker.md) | `teamcraft_notetaker`   | off, AI transcript and summary of calls      |
 | [keycloak.md](keycloak.md)                       | `keycloak`              | on, or an external OIDC provider             |
+| [dex.md](dex.md)                                 | `dex`                   | off, small provider with a fixed user list   |
 | [garage.md](garage.md)                           | `garage`                | on, or external S3                           |
 | [push-gateway.md](push-gateway.md)               | `push_gateway`          | off, own host, for app publishers            |
 | [mail.md](mail.md)                               | (server settings)       | off                                          |
@@ -16,6 +17,7 @@
 | [glitchtip.md](glitchtip.md)                     | `glitchtip`             | off, error tracking for crash reports        |
 | [branding.md](branding.md)                       | server, Caddy, Keycloak | one built-in brand                           |
 | [../backups.md](../backups.md)                   | `backups`               | on                                           |
+| [demo.md](demo.md)                               | `demo_reset`            | off, demo instance for store reviews         |
 
 Every role's settings, with their defaults and comments, are in `roles/<role>/defaults/main.yml`;
 the wiring between components is in `group_vars/teamcraft_servers.yml`. Override any of them in your

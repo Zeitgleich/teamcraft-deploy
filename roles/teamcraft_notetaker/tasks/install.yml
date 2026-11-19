@@ -25,6 +25,7 @@
     base_service:
       name: teamcraft-notetaker
       user: tc-notetaker
+      pulls_teamcraft_images: true
       secrets: >-
         {{ teamcraft_notetaker_secrets | dict2items | selectattr('value') | items2dict
            | combine({'notetaker_config': teamcraft_notetaker_config}) }}
