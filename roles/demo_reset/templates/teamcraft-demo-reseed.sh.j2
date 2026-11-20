@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Managed by Ansible (teamcraft-deploy, role demo_reset). Seeds the demo instance from scratch:
+# empties the database, the bucket and the seed devices' stores, runs demo-seed (as {{ demo_reset_peers_user }}),
+# takes the snapshot the nightly reset restores, and starts demo-peers. Asks first; --yes skips that.
+set -euo pipefail
+if [[ "${1:-}" != --yes ]]; then
+  read -r -p "Wipe the demo instance {{ teamcraft_domain }} and seed it again? [y/N] " answer
+  [[ "$answer" == y ]] || exit 1
+fi
+set -a
+# shellcheck disable=SC1091
+. /etc/teamcraft-demo-reset.env
+# shellcheck disable=SC1091
+. /etc/teamcraft-demo-peers.env
+set +a
+export PATH="/usr/local/lib/teamcraft-demo/bin:$PATH"
+log() { printf '%s reseed: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >&2; }
+log "stopping demo-peers and the server"
+bash -c "$DEMO_PEERS_STOP_CMD"
+bash -c "$DEMO_STOP_CMD"
+log "emptying the database, the bucket and the stores"
+psql "$DEMO_DATABASE_URL" -X -q -v ON_ERROR_STOP=1 -c 'SET client_min_messages = warning' \
+  -c 'DROP SCHEMA IF EXISTS public CASCADE' -c 'CREATE SCHEMA public'
+rclone delete "$DEMO_BUCKET"
+find "$DEMO_PEER_STORES" -mindepth 1 -delete
+log "starting the server"
+bash -c "$DEMO_START_CMD"
+until curl -fsS --max-time 5 -o /dev/null "$DEMO_READY_URL"; do sleep 5; done
+log "seeding"
+DEMO_RECOVERY_PASSPHRASE="$(cat {{ base_secrets_dir }}/demo_recovery_passphrase)"
+export DEMO_RECOVERY_PASSPHRASE
+# runuser keeps the environment; the passwords are read here, as root.
+(cd / && /usr/local/lib/teamcraft-demo/with-dev-token-passwords \
+  runuser -u {{ demo_reset_peers_user }} -- /usr/local/lib/teamcraft-demo/demo-seed)
+log "taking the snapshot"
+/usr/local/sbin/teamcraft-demo-reset snapshot
+log "done"

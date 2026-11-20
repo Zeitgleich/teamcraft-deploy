@@ -52,6 +52,15 @@ http:
       tls:
         certResolver: letsencrypt
 {% endif %}
+{% if dex_enabled %}
+    # Identity provider (Dex).
+    teamcraft-dex:
+      rule: "Host(`{{ dex_hostname }}`)"
+      entryPoints: [websecure]
+      service: teamcraft-dex
+      tls:
+        certResolver: letsencrypt
+{% endif %}
 {% if calcraft_enabled %}
     teamcraft-calcraft:
       rule: "Host(`{{ calcraft_hostname }}`)"
@@ -134,6 +143,12 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.garage_s3 }}"
+{% endif %}
+{% if dex_enabled %}
+    teamcraft-dex:
+      loadBalancer:
+        servers:
+          - url: "http://{{ teamcraft_upstream_host }}:{{ teamcraft_ports.dex }}"
 {% endif %}
 {% if calcraft_enabled %}
     teamcraft-calcraft:

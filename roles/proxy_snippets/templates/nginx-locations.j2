@@ -114,6 +114,12 @@
 {{ i }}        return 204;
 {{ i }}    }
 {{ i }}}
+{% elif kind == 'dex' %}
+{{ i }}# Identity provider (Dex): sign-in pages, tokens, keys.
+{{ i }}location {{ catch_all }} {
+{{ i }}    proxy_pass {{ upstream }};
+{{ headers(i ~ '    ') }}{{ i }}    proxy_set_header Connection "";
+{{ i }}}
 {% elif kind == 'calcraft' %}
 {{ i }}location {{ catch_all }} {
 {{ i }}    proxy_pass {{ upstream }};

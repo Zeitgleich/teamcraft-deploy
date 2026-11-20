@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Managed by Ansible (teamcraft-deploy, role demo_reset). psql, pg_dump or pg_restore (the name this
+# is called by) inside the Postgres container, as tc-db. Files on the host go through stdin/stdout:
+# pg_dump's --file=PATH becomes stdout, pg_restore's file argument stdin.
+set -euo pipefail
+tool="$(basename "$0")"
+uid="$(id -u tc-db)"
+export XDG_RUNTIME_DIR="/run/user/$uid"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus"
+PGPASSWORD="$(cat {{ base_secrets_dir }}/teamcraft_db_password)"
+export PGPASSWORD
+run() {
+  # The password goes in through the environment, never the command line. A subshell in /: tc-db
+  # can't enter root's working directory.
+  (cd / && runuser -u tc-db -- podman exec -i -e PGPASSWORD teamcraft-postgres "$tool" "$@")
+}
+case "$tool" in
+  pg_dump)
+    args=() out=""
+    for a in "$@"; do
+      case "$a" in
+        --file=*) out="${a#--file=}" ;;
+        *) args+=("$a") ;;
+      esac
+    done
+    if [[ -n "$out" ]]; then run "${args[@]}" >"$out"; else run "${args[@]}"; fi
+    ;;
+  pg_restore)
+    args=() in=""
+    for a in "$@"; do
+      if [[ "$a" != -* && -f "$a" ]]; then in="$a"; else args+=("$a"); fi
+    done
+    if [[ -n "$in" ]]; then run "${args[@]}" <"$in"; else run "${args[@]}"; fi
+    ;;
+  *) run "$@" ;;
+esac

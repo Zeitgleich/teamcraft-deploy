@@ -67,6 +67,15 @@
 {% endif %}
 }
 {% endif %}
+{% if dex_enabled %}
+
+# Identity provider (Dex, docs/components/dex.md): sign-in pages, tokens, keys.
+{{ dex_hostname }} {
+	import tls
+	encode zstd gzip
+	reverse_proxy {{ teamcraft_upstream_host }}:{{ teamcraft_ports.dex }}
+}
+{% endif %}
 {% if garage_enabled %}
 
 # S3 for encrypted attachments; clients up- and download directly with presigned URLs. The web

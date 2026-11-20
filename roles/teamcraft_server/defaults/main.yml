@@ -16,15 +16,20 @@ teamcraft_server_web_checksum: ""
 # Deprovisioning: poll the identity provider for disabled or deleted users (needs the server
 # client's service account; the bundled Keycloak has it).
 teamcraft_server_oidc_sync_enabled: "{{ keycloak_enabled }}"
-# Bundled Keycloak: keys and admin API over loopback instead of a round trip through the proxy.
+# Bundled Keycloak or Dex: keys (and Keycloak's admin API) over loopback instead of a round trip
+# through the proxy.
 teamcraft_server_oidc_jwks_uri: >-
   {{ ('http://' ~ teamcraft_upstream_host ~ ':' ~ teamcraft_ports.keycloak ~ '/realms/' ~ keycloak_realm ~ '/protocol/openid-connect/certs')
-     if keycloak_enabled else '' }}
+     if keycloak_enabled
+     else (('http://' ~ teamcraft_upstream_host ~ ':' ~ teamcraft_ports.dex ~ '/keys') if dex_enabled else '') }}
 teamcraft_server_oidc_admin_url: >-
   {{ ('http://' ~ teamcraft_upstream_host ~ ':' ~ teamcraft_ports.keycloak ~ '/admin/realms/' ~ keycloak_realm) if keycloak_enabled else '' }}
 teamcraft_server_oidc_sync_client_secret: >-
   {{ base_secrets.keycloak_server_client_secret if keycloak_enabled else (base_secrets.oidc_sync_client_secret | default('')) }}
-teamcraft_server_oidc_roles:
+# The role names in the provider. With Dex they are groups in a claim, hence distinctive names: any
+# group equal to one of them grants the role (TeamCraft docs/operations.md, "Without Keycloak").
+teamcraft_server_oidc_roles: "{{ dex_server_oidc_roles if dex_enabled else teamcraft_server_oidc_roles_default }}"
+teamcraft_server_oidc_roles_default:
   owner: owner
   admin: admin
   member: member
@@ -46,7 +51,8 @@ teamcraft_server_extra_config: ""
 # Podman secrets of the server (empty ones are left out). Derived from base_secrets.
 teamcraft_server_secrets:
   database_url: >-
-    postgres://teamcraft:{{ base_secrets.teamcraft_db_password | urlencode | replace('/', '%2F') }}@127.0.0.1:{{ teamcraft_ports.postgres }}/teamcraft
+    {{ 'postgres://teamcraft:' ~ (base_secrets.teamcraft_db_password | urlencode | replace('/', '%2F'))
+       ~ '@127.0.0.1:' ~ teamcraft_ports.postgres ~ '/' ~ teamcraft_db_name }}
   s3_access_key: "{{ teamcraft_s3_access_key }}"
   s3_secret_key: "{{ teamcraft_s3_secret_key }}"
   sfu_registration_token: "{{ base_secrets.sfu_registration_token }}"

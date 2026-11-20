@@ -1,0 +1,11 @@
+# Managed by Ansible (teamcraft-deploy, role demo_reset).
+[Unit]
+Description=Nightly reset of the TeamCraft demo instance
+
+[Timer]
+OnCalendar={{ demo_reset_on_calendar }}
+Persistent=false
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

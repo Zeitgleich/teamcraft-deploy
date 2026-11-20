@@ -1,0 +1,29 @@
+# Small identity provider: Dex with a fixed user list, rootless as tc-dex, at https://id.<domain>
+# (dex_hostname, group_vars/teamcraft_servers.yml).
+# For instances whose users never change, e.g. a demo instance for store reviews (docs/components/dex.md).
+# Takes about 30 MB instead of Keycloak's 400+. dex_enabled: group_vars/teamcraft_servers.yml.
+dex_image: "ghcr.io/dexidp/dex:v2.46.1"
+dex_memory: 64m
+# The users: one entry each. `password` names a generated password (one per name, shared by every
+# user that names it): its file is <base_secrets_dir>/dex_password_<password>, its bcrypt hash goes
+# to Dex. `groups` are TeamCraft roles (dex_server_oidc_roles). user_id: a fixed UUID, the `sub`
+# claim, so a user stays the same TeamCraft account.
+#   - {username: alex, email: alex@example.com, name: Alex Example,
+#      user_id: 6f0c1d7e-0000-4000-8000-000000000002, groups: [teamcraft-member], password: seed}
+dex_users: []
+# Role names as groups in Dex's `groups` claim: distinctive, as every group equal to one grants it.
+dex_server_oidc_roles:
+  owner: teamcraft-owner
+  admin: teamcraft-admin
+  member: teamcraft-member
+  guest: teamcraft-guest
+# Redirect URIs besides the web client, e.g. the mobile apps' custom scheme
+# ("de.zeitgleich.teamcraft:/oauth/callback"). Dex compares them exactly: the desktop app's loopback
+# callback (a new port each time) can't be listed, so the desktop app doesn't sign in with Dex.
+dex_extra_redirect_uris: []
+dex_redirect_uris: >-
+  {{ teamcraft_web_hostnames | map('regex_replace', '^', 'https://') | map('regex_replace', '$', '/') | list
+     + dex_extra_redirect_uris }}
+# Lifetime of a device's sign-in without use, and at most.
+dex_refresh_token_idle: 720h
+dex_refresh_token_lifetime: 2160h

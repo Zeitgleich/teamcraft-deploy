@@ -10,6 +10,7 @@ proxy_snippets_sites: >-
   {{ teamcraft_web_hostnames | map('regex_replace', '^', 'server ') | map('regex_replace', '$', ' ' ~ teamcraft_ports.server) | list
      + (['sfu ' ~ teamcraft_sfu_hostname ~ ' ' ~ teamcraft_ports.sfu_fallback] if teamcraft_sfu_enabled else [])
      + (['keycloak ' ~ keycloak_hostname ~ ' ' ~ teamcraft_ports.keycloak] if keycloak_enabled else [])
+     + (['dex ' ~ dex_hostname ~ ' ' ~ teamcraft_ports.dex] if dex_enabled else [])
      + (['s3 ' ~ garage_hostname ~ ' ' ~ teamcraft_ports.garage_s3] if garage_enabled else [])
      + (['calcraft ' ~ calcraft_hostname ~ ' ' ~ teamcraft_ports.calcraft] if calcraft_enabled else [])
      + (['glitchtip ' ~ glitchtip_hostname ~ ' ' ~ teamcraft_ports.glitchtip] if glitchtip_enabled else []) }}

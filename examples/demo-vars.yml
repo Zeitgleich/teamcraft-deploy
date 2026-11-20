@@ -1,0 +1,63 @@
+# A demo instance for the app store reviews (docs/components/demo.md): placeholder content, a fixed
+# user list, reset to its seed every night, and as little memory as possible (about 350 MB for the
+# services). Copy to inventory/host_vars/demo.example.com/vars.yml next to examples/vars.yml' settings.
+
+teamcraft_domain: demo.example.com
+teamcraft_admin_email: admin@example.com
+
+# Dex with static users instead of Keycloak (about 30 MB instead of 400+).
+keycloak_enabled: false
+dex_enabled: true
+# The demo's users (TeamCraft tests/e2e/src/demo.rs seeds them). Logins are the e-mail addresses;
+# passwords are generated on the host: /srv/teamcraft/secrets/dex_password_<password>.
+dex_users:
+  - {username: owner, email: owner@example.com, name: Demo Owner,
+     user_id: 6f0c1d7e-0000-4000-8000-000000000001, groups: [teamcraft-owner], password: owner}
+  - {username: alex, email: alex@example.com, name: Alex Example,
+     user_id: 6f0c1d7e-0000-4000-8000-000000000002, groups: [teamcraft-member], password: seed}
+  - {username: sam, email: sam@example.com, name: Sam Sample,
+     user_id: 6f0c1d7e-0000-4000-8000-000000000003, groups: [teamcraft-member], password: seed}
+  - {username: robin, email: robin@example.com, name: Robin Placeholder,
+     user_id: 6f0c1d7e-0000-4000-8000-000000000004, groups: [teamcraft-member], password: seed}
+  # One reviewer account per store.
+  - {username: reviewer-1, email: reviewer-1@example.com, name: Review Account 1,
+     user_id: 6f0c1d7e-0000-4000-8000-000000000011, groups: [teamcraft-member], password: reviewer_1}
+  - {username: reviewer-2, email: reviewer-2@example.com, name: Review Account 2,
+     user_id: 6f0c1d7e-0000-4000-8000-000000000012, groups: [teamcraft-member], password: reviewer_2}
+# The store apps' redirect URI, and the one of TeamCraft's dev/dev-token.py the seeding run signs in with.
+dex_extra_redirect_uris: ["de.zeitgleich.teamcraft:/oauth/callback", "http://127.0.0.1:9/callback"]
+teamcraft_oidc_app_redirect_uris: ["de.zeitgleich.teamcraft:/oauth/callback"]
+
+# Names with "demo": the nightly reset refuses anything else.
+teamcraft_db_name: teamcraft_demo
+teamcraft_s3_bucket: teamcraft-demo
+demo_reset_enabled: true
+
+# Small: memory limits per container and a tiny Postgres. Nobody uses the instance most of the time.
+postgres_memory: 128m
+postgres_settings: {shared_buffers: 32MB, max_connections: 20, work_mem: 2MB, maintenance_work_mem: 16MB,
+                    effective_cache_size: 64MB, max_wal_size: 256MB, wal_buffers: 1MB}
+garage_memory: 128m
+garage_capacity: 5G
+teamcraft_server_memory: 256m
+teamcraft_sfu_memory: 128m
+dex_memory: 64m
+caddy_memory: 96m
+# No dumps of a database that is reset every night anyway.
+backups_enabled: false
+
+teamcraft_server_extra_config: |
+  [database]
+  max_connections = 5
+
+  [limits]
+  # Attachments: small, few, and gone with the next reset anyway.
+  max_pending_attachments_per_user = 5
+  max_attachment_bytes_per_user = 104857600
+  draft_file_retention_days = 1
+  max_draft_files_per_user = 10
+  max_devices_per_user = 5
+
+  [retention]
+  # The seed's signed policy keeps 500 messages per channel; the job runs often so nothing piles up.
+  interval_secs = 900

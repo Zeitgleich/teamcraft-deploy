@@ -1,0 +1,64 @@
+- name: Service user of demo-peers
+  ansible.builtin.user:
+    name: "{{ demo_reset_peers_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: /var/lib/teamcraft-demo
+    create_home: false
+
+- name: Directories of demo-peers
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ demo_reset_peers_user }}"
+    group: "{{ demo_reset_peers_user }}"
+    mode: "0700"
+  loop:
+    - /var/lib/teamcraft-demo
+    - "{{ demo_reset_peers_stores_dir }}"
+
+- name: Binaries
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "/usr/local/lib/teamcraft-demo/{{ item.name }}"
+    mode: "0755"
+  loop: "{{ [{'src': demo_reset_peers_binary, 'name': 'demo-peers'}]
+            + ([{'src': demo_reset_seed_binary, 'name': 'demo-seed'}] if demo_reset_seed_binary | length > 0 else []) }}"
+  register: demo_reset_peers_binaries
+
+# The Dex passwords stay in the secrets directory: the unit hands them over as credentials
+# (LoadCredential), this exports them for the binaries, never through a file of their own.
+- name: Credentials wrapper
+  ansible.builtin.template:
+    src: with-dev-token-passwords.sh.j2
+    dest: /usr/local/lib/teamcraft-demo/with-dev-token-passwords
+    mode: "0755"
+
+- name: Settings of demo-peers and demo-seed
+  ansible.builtin.template:
+    src: demo-peers.env.j2
+    dest: /etc/teamcraft-demo-peers.env
+    mode: "0644"
+  register: demo_reset_peers_env
+
+- name: Reseed command
+  ansible.builtin.template:
+    src: teamcraft-demo-reseed.sh.j2
+    dest: /usr/local/sbin/teamcraft-demo-reseed
+    mode: "0755"
+  when: demo_reset_seed_binary | length > 0
+
+- name: Unit of demo-peers
+  ansible.builtin.template:
+    src: teamcraft-demo-peers.service.j2
+    dest: /etc/systemd/system/teamcraft-demo-peers.service
+    mode: "0644"
+  register: demo_reset_peers_unit
+
+# Without stores (before the first seeding) the unit's condition skips the start.
+- name: Running demo-peers
+  ansible.builtin.systemd_service:
+    name: teamcraft-demo-peers.service
+    enabled: true
+    state: "{{ 'restarted' if (demo_reset_peers_unit.changed or demo_reset_peers_env.changed or demo_reset_peers_binaries.changed) else 'started' }}"
+    daemon_reload: true

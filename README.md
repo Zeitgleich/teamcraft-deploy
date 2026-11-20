@@ -40,6 +40,7 @@ just self-check
 | [Integration bridge](docs/components/teamcraft-bridge.md) | off                   | `tc-bridge`    | `teamcraft_bridge_enabled`    |
 | [Notetaker](docs/components/teamcraft-notetaker.md)       | off                   | `tc-notetaker` | `teamcraft_notetaker_enabled` |
 | [Keycloak](docs/components/keycloak.md)                   | on (or external OIDC) | `tc-keycloak`  | `keycloak_enabled`            |
+| [Dex](docs/components/dex.md) (instead of Keycloak)       | off                   | `tc-dex`       | `dex_enabled`                 |
 | [Garage](docs/components/garage.md)                       | on (or external S3)   | `tc-garage`    | `garage_enabled`              |
 | [Push gateway](docs/components/push-gateway.md)           | off (own host)        | `tc-gateway`   | `push_gateway_enabled`        |
 | [Mail relay](docs/components/mail.md)                     | off (external SMTP)   | –              | `teamcraft_smtp_enabled`      |
@@ -47,6 +48,7 @@ just self-check
 | [GlitchTip](docs/components/glitchtip.md) (crash reports) | off                   | `tc-glitchtip` | `glitchtip_enabled`           |
 | [Brands](docs/components/branding.md)                     | one built-in          | –              | `teamcraft_brands`            |
 | [Backups](docs/backups.md)                                | on                    | `tc-db`        | `backups_enabled`             |
+| [Demo reset](docs/components/demo.md) (store reviews)     | off                   | root           | `demo_reset_enabled`          |
 | Base (users, Podman, firewall, secrets)                   | always                | root           | `base_firewall_enabled`       |
 
 ## Testing changes

@@ -1,0 +1,53 @@
+# Managed by Ansible (teamcraft-deploy, role dex). Users: dex_users; their bcrypt hashes come from
+# the environment (podman secrets), never from this file.
+issuer: {{ teamcraft_oidc_issuer }}
+
+storage:
+  type: sqlite3
+  config:
+    file: /var/dex/dex.db
+
+web:
+  http: {{ teamcraft_upstream_host }}:{{ teamcraft_ports.dex }}
+  # The web client fetches discovery and tokens from the browser.
+  allowedOrigins: {{ teamcraft_web_hostnames | map('regex_replace', '^', 'https://') | list | to_json }}
+  allowedHeaders: ["Authorization", "DPoP"]
+
+oauth2:
+  responseTypes: ["code"]
+  # No consent screen between the login form and the app.
+  skipApprovalScreen: true
+  # Only the local password database: Dex opens its login form directly.
+  passwordConnector: local
+
+expiry:
+  idTokens: 1h
+  refreshTokens:
+    validIfNotUsedFor: {{ dex_refresh_token_idle }}
+    absoluteLifetime: {{ dex_refresh_token_lifetime }}
+
+logger:
+  level: info
+  format: json
+
+enablePasswordDB: true
+
+staticClients:
+  - id: {{ teamcraft_oidc_client_id }}
+    name: TeamCraft
+    public: true
+    redirectURIs: {{ dex_redirect_uris | to_json }}
+
+staticPasswords:
+{% for user in dex_users %}
+  - email: {{ user.email | to_json }}
+    username: {{ user.username | to_json }}
+    name: {{ user.name | to_json }}
+    preferredUsername: {{ user.username | to_json }}
+    userID: {{ user.user_id | to_json }}
+    groups: {{ user.groups | to_json }}
+    hashFromEnv: DEX_HASH_{{ user.password | upper | regex_replace('[^A-Z0-9]', '_') }}
+{% endfor %}
+{% if dex_users | length == 0 %}
+  []
+{% endif %}

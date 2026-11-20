@@ -31,6 +31,16 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A demo instance for the app store reviews (TeamCraft#1628, docs/components/demo.md,
+  examples/demo-vars.yml): the optional role `dex` (Dex with a fixed user list at `id.<domain>`,
+  about 30 MB instead of Keycloak) and `demo_reset` (nightly reset to the seed with TeamCraft's
+  `dev/demo/demo-reset.sh`, a systemd timer; `demo-peers` keeps the seed users' devices online so
+  that reviewers' new devices can write, `teamcraft-demo-reseed` seeds from scratch). New settings for it: `teamcraft_oidc_roles_claim`,
+  `teamcraft_oidc_app_redirect_uris`, `teamcraft_db_name` and `postgres_settings`.
+- Private image registries: `teamcraft_image_registry_username` and the secret
+  `image_registry_token` (sops file, or a file of that name in the secrets directory) give the services
+  that pull TeamCraft images a login in `~/.config/containers/auth.json`.
+
 - The SFU's call fallback goes through the reverse proxy (TeamCraft#1226): clients whose network blocks
   UDP reach the SFU over a WebSocket at `wss://<teamcraft_sfu_hostname>/call/ws` on TCP 443. The path
   needs a TeamCraft release that serves `/call/ws` (TeamCraft#TBD; earlier releases call it
