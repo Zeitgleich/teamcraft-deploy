@@ -22,6 +22,16 @@
       user: tc-glitchtip
       secrets: "{{ glitchtip_secrets | dict2items | selectattr('value') | items2dict }}"
 
+# GlitchTip 7 runs the task worker inside the web process and refuses SERVER_ROLE=worker. Stop the old
+# worker before the web unit changes, so no 6.x worker runs against the migrated database.
+- name: No separate worker (GlitchTip 7)
+  ansible.builtin.include_role:
+    name: base
+    tasks_from: service_remove
+  vars:
+    base_service_name: glitchtip-worker
+    base_service_user: tc-glitchtip
+
 - name: Quadlet units
   ansible.builtin.template:
     src: "{{ item }}.container.j2"
@@ -29,7 +39,7 @@
     owner: tc-glitchtip
     group: tc-glitchtip
     mode: "0644"
-  loop: [glitchtip-valkey, glitchtip-web, glitchtip-worker]
+  loop: [glitchtip-valkey, glitchtip-web]
   register: glitchtip_units
 
 # Every unit reads secrets (the Valkey password is in all three), so a changed secret restarts all.

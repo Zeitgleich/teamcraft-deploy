@@ -1,4 +1,4 @@
-{# Environment shared by glitchtip-web and glitchtip-worker. #}
+{# Environment of glitchtip-web (a template of its own since web and worker were separate units before GlitchTip 7). #}
 Environment=GLITCHTIP_DOMAIN=https://{{ glitchtip_hostname }}
 Environment=ALLOWED_HOSTS={{ [glitchtip_hostname, teamcraft_upstream_host, 'localhost'] | unique | join(',') }}
 Environment=CSRF_TRUSTED_ORIGINS=https://{{ glitchtip_hostname }}
@@ -12,6 +12,7 @@ Environment=ENABLE_ADMIN=false
 Environment=GLITCHTIP_ENABLE_MCP=false
 Environment=GLITCHTIP_ENABLE_DUCKDB={{ glitchtip_duckdb_enabled | bool | lower }}
 Environment=GLITCHTIP_SPAN_RAW_RETENTION_DAYS={{ glitchtip_span_raw_retention_days | int }}
+Environment=GLITCHTIP_SYMBOLICATION_BUILD_MEMORY_MB={{ glitchtip_symbolication_build_memory_mb | int }}
 {% for name, value in glitchtip_extra_environment | dictsort %}
 Environment={{ name }}={{ value }}
 {% endfor %}
@@ -34,7 +35,7 @@ Secret=glitchtip_s3_secret_key,type=env,target=AWS_SECRET_ACCESS_KEY
 # Span Parquet files (glitchtip_duckdb_enabled) go to cold_storage/ in the same bucket.
 {% endif %}
 {% elif glitchtip_duckdb_enabled | bool %}
-# Span Parquet files (cold storage); written by the worker, read by the web. :U hands the new volume to the
+# Span Parquet files (cold storage); written by the task worker, read by the web. :U hands the new volume to the
 # image's user (app, uid 5000): the mount point doesn't exist in the image.
 Environment=GLITCHTIP_COLD_STORAGE_DIR=/code/cold-storage
 Volume=glitchtip-cold-storage:/code/cold-storage:U

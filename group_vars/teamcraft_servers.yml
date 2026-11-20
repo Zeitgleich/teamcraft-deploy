@@ -149,7 +149,6 @@ teamcraft_services:
   - {name: calcraft, user: tc-calcraft, enabled: "{{ calcraft_enabled }}"}
   - {name: glitchtip-valkey, user: tc-glitchtip, enabled: "{{ glitchtip_enabled }}"}
   - {name: glitchtip-web, user: tc-glitchtip, enabled: "{{ glitchtip_enabled }}"}
-  - {name: glitchtip-worker, user: tc-glitchtip, enabled: "{{ glitchtip_enabled }}"}
 
 # Shared directories
 teamcraft_base_dir: /srv/teamcraft

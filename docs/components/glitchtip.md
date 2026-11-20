@@ -8,11 +8,14 @@ this page if you run one already or don't want crash reports at all.
 
 What runs, rootless as `tc-glitchtip`, at `https://glitchtip.<domain>`:
 
-| Unit               | What                                                                    | Memory limit |
-|--------------------|-------------------------------------------------------------------------|--------------|
-| `glitchtip-web`    | web UI, API and event intake; migrates the database when it starts      | 512 MB       |
-| `glitchtip-worker` | one worker process (event processing, mail, clean-up; scheduler inside) | 512 MB       |
-| `glitchtip-valkey` | task queue and cache, loopback only, with a password                    | 128 MB       |
+| Unit               | What                                                                                       | Memory limit |
+|--------------------|--------------------------------------------------------------------------------------------|--------------|
+| `glitchtip-web`    | one process: web UI, API, event intake, task worker and scheduler; migrates when it starts | 4 GB         |
+| `glitchtip-valkey` | task queue and cache, loopback only, with a password                                       | 128 MB       |
+
+GlitchTip 7 runs everything in one process; the separate `glitchtip-worker` unit of GlitchTip 6 is
+removed by the playbook. The 4 GB are a limit, not a reservation: idle it uses a few hundred MB. It is
+sized for debug file uploads, which need memory in proportion to the file (see "Debug files" below).
 
 Its database `glitchtip` is in the bundled Postgres (with `max_locks_per_transaction = 512`, which
 GlitchTip's partitioned tables need; Postgres restarts once when you turn GlitchTip on). Web and Valkey
@@ -192,8 +195,9 @@ All in `roles/glitchtip/defaults/main.yml`; the ones you are most likely to chan
 | `glitchtip_email_url` (sops)                                 | –                              | mail server as a URL, e.g. `smtp+tls://user:password@mail.example.com:587`; without it mail only goes to the log |
 | `glitchtip_user_registration`                                | `false`                        | `true`: anyone who reaches the page can sign up                                                                  |
 | `glitchtip_organization_creation`                            | `false`                        | `true`: every user can create organizations                                                                      |
-| `glitchtip_worker_concurrency`                               | `4`                            | tasks the worker runs at once                                                                                    |
-| `glitchtip_web_memory` / `_worker_memory` / `_valkey_memory` | `512m` / `512m` / `128m`       | container memory limits                                                                                          |
+| `glitchtip_worker_concurrency`                               | `4`                            | tasks the task worker runs at once                                                                               |
+| `glitchtip_memory` / `glitchtip_valkey_memory`               | `4g` / `128m`                  | container memory limits                                                                                          |
+| `glitchtip_symbolication_build_memory_mb`                    | `1200`                         | memory for one symbol cache build; native debug files above about this / 1.82 MB are not symbolicated            |
 | `glitchtip_uptime_enabled` / `glitchtip_logs_enabled`        | `false`                        | GlitchTip's uptime monitoring and log ingestion, not needed for crash reports                                    |
 | `glitchtip_duckdb_enabled`                                   | `true`                         | store and show the spans of performance transactions (GlitchTip's DuckDB cold storage, see below)               |
 | `glitchtip_span_raw_retention_days`                          | `30`                           | raw spans are deleted after this (`GLITCHTIP_SPAN_RAW_RETENTION_DAYS`); span trend rollups stay longer           |
@@ -201,18 +205,33 @@ All in `roles/glitchtip/defaults/main.yml`; the ones you are most likely to chan
 | `glitchtip_sso_role_claim`                                   | –                              | claim with the users' roles; set to sync organization roles from SSO (see above)                                 |
 | `glitchtip_extra_environment`                                | `{}`                           | more of [GlitchTip's settings](https://glitchtip.com/documentation/install), no secrets                          |
 
-Debug files (symbols, source maps) are uploaded with `sentry-cli` or GlitchTip's own tooling to the
-same host name; the proxy accepts bodies up to 100 MB. They stay in the volume `glitchtip-uploads`
-unless `glitchtip_s3_endpoint` is set; the S3 keys go in the sops file as `glitchtip_s3_access_key`
-and `glitchtip_s3_secret_key`.
+### Debug files
+
+Debug files (dSYMs, ELF `.debug`/`.so`, PDBs, ProGuard mappings, source maps) are uploaded with
+`sentry-cli debug-files upload` (or GlitchTip's own tooling) to the same host name. `sentry-cli` sends them
+in chunks (the proxy accepts bodies up to 100 MB), then asks GlitchTip to assemble them; GlitchTip does
+that in a background task, after `sentry-cli` has already reported success. Use `sentry-cli debug-files
+upload --wait` to see the result, and check the project's Settings → Debug Files.
+
+The assemble task and the symbol cache GlitchTip builds when the first event needs a file take memory in
+proportion to the file. Debug files of a large Rust or C++ build are several hundred MB: with less memory
+than `glitchtip_memory` sets, the task is OOM-killed, lands in the dead-letter queue and the file never
+appears (the journal shows `Memory cgroup out of memory` and `exceeded max rescues ... sending to DLQ`).
+A native file above `glitchtip_symbolication_build_memory_mb` / 1.82 MB is kept but not symbolicated
+(GlitchTip logs it); raise both together.
+
+The files stay in the volume `glitchtip-uploads` unless `glitchtip_s3_endpoint` is set; the S3 keys go
+in the sops file as `glitchtip_s3_access_key` and `glitchtip_s3_secret_key`. GlitchTip keeps the uploaded
+chunks and the assembled file both, and deletes them after `glitchtip_retention_days`: nightly builds with
+large debug files fill tens of GB.
 
 Spans of performance transactions (the steps of a slow operation, e.g. which job it waited behind) are
 shown under Performance → a transaction group → "Span breakdown". GlitchTip stages them in Postgres;
-every 5 minutes the worker writes the ones older than 5 minutes to Parquet files, which the web reads
+every 5 minutes the task worker writes the ones older than 5 minutes to Parquet files, which the web reads
 with DuckDB (the extensions are in the image, nothing is downloaded). So a new transaction's spans show
 up after 5 to 10 minutes. The files are in the volume `glitchtip-cold-storage`, or with
 `glitchtip_s3_endpoint` under `cold_storage/` in the same bucket. DuckDB takes at most a quarter of a
-container's memory limit (256 MB at most); with many spans, raise `glitchtip_worker_memory`.
+container's memory limit (256 MB at most); with many spans, raise `glitchtip_memory`.
 `glitchtip_duckdb_enabled: false` keeps transactions without their spans.
 
 ## Privacy
@@ -230,7 +249,9 @@ keep `glitchtip_retention_days` short, and give access only to the people who fi
   uploaded again. Neither are the span files (volume `glitchtip-cold-storage`): they are kept for
   `glitchtip_span_raw_retention_days` only.
 - The image is pinned (`glitchtip_image`); a playbook release moves it. Migrations run when the web unit
-  starts. Read [GlitchTip's blog](https://glitchtip.com/blog/) before a new major version.
+  starts. Read [GlitchTip's blog](https://glitchtip.com/blog/) before a new major version. Migrations
+  can't be undone: before an update, dump the database (`pg_dump -Fc`), so you can go back by restoring
+  it with the previous image.
 - `glitchtip_enabled: false` and `just setup-all` stop and remove the units; the data (database,
   volumes) stays ([../uninstalling.md](../uninstalling.md)). To delete it for good: drop the database
   `glitchtip` and the role of the same name in Postgres, and remove the user `tc-glitchtip`.

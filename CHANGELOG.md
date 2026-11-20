@@ -16,6 +16,17 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Breaking** (GlitchTip only): GlitchTip **7.0.0** (was 6.2.6). GlitchTip now runs as one process, so the
+  unit `glitchtip-worker` is gone (the playbook stops and removes it) and `glitchtip-web` also runs the task
+  worker. Its memory limit is `glitchtip_memory` (**4g**), replacing `glitchtip_web_memory` and
+  `glitchtip_worker_memory` (512m each): with 512 MB the worker was OOM-killed assembling large debug files
+  (the Rust core's dSYMs, `.so` and PDB files of 150-450 MB), which then never appeared although
+  `sentry-cli` reported them uploaded. New `glitchtip_symbolication_build_memory_mb` (1200) lets GlitchTip
+  build symbol caches for native files up to about 660 MB. GlitchTip 7 needs PostgreSQL 15 or newer (the
+  bundled one is 18) and a 6.x database; migrations can't be undone, so dump the database before
+  updating (docs/components/glitchtip.md). Other changes of GlitchTip 7 that may concern you: an
+  all-digit organization slug gets a `-1` suffix, `sentry-cli`'s `org` must match the slug exactly (case
+  included), and `X-Forwarded-For` is only read from proxies on private addresses (`TRUSTED_PROXIES`).
 - The SFU's call fallback listens on the upstream address only (`127.0.0.1:8082` by default,
   `TEAMCRAFT_SFU_FALLBACK_BIND`). With TeamCraft 1.0.20 or later and host networking it listened on
   `[::]:8082`, plain HTTP on every address of the host, guarded only by the firewall. Move it with

@@ -1,8 +1,8 @@
 # Optional error tracking for the apps' crash reports: GlitchTip (Sentry protocol), rootless as
-# tc-glitchtip, behind the proxy at glitchtip_hostname (group_vars/teamcraft_servers.yml). Three units:
-# glitchtip-valkey (task queue and cache), glitchtip-web (UI, API, event intake; migrates the database
-# on start) and glitchtip-worker (one process, scheduler inside). Database `glitchtip` in the bundled
-# Postgres. Any other Sentry-protocol backend works as well: the apps only know a DSN
+# tc-glitchtip, behind the proxy at glitchtip_hostname (group_vars/teamcraft_servers.yml). Two units:
+# glitchtip-valkey (task queue and cache) and glitchtip-web (one process since GlitchTip 7: UI, API, event
+# intake, the task worker and its scheduler; migrates the database on start). Database `glitchtip` in the
+# bundled Postgres. Any other Sentry-protocol backend works as well: the apps only know a DSN
 # (docs/components/glitchtip.md).
 glitchtip_enabled: false
 # true on a host that runs only GlitchTip (group teamcraft_crash_reports, set in its group_vars): the role
@@ -10,18 +10,25 @@ glitchtip_enabled: false
 # teamcraft_proxy_snippets_dir/glitchtip/ (Plesk, Apache, nginx).
 glitchtip_standalone: false
 # https://glitchtip.com/blog/ announces new major versions; read it before moving this.
-glitchtip_image: "docker.io/glitchtip/glitchtip:6.2.6"
+glitchtip_image: "docker.io/glitchtip/glitchtip:7.0.0"
 glitchtip_valkey_image: "docker.io/valkey/valkey:9.1.3-alpine3.24"
 
-# About 1 GB together: one web process, one worker process with few concurrent tasks.
-glitchtip_web_memory: 512m
-glitchtip_worker_memory: 512m
+# GlitchTip's one process (web and task worker). Debug file uploads and the symbol caches built from them
+# need memory in proportion to the file: the Rust core's debug files are 150-450 MB, and with 512 MB the
+# old worker was OOM-killed assembling them (the upload then vanished: sentry-cli had already reported
+# success). Cache builds may use 40 % of this limit at most (glitchtip_symbolication_build_memory_mb).
+glitchtip_memory: 4g
 glitchtip_valkey_memory: 128m
 # Valkey's own limit, below the container's. It evicts nothing: queued tasks must not vanish.
 glitchtip_valkey_maxmemory: 96mb
-# Tasks the worker runs at once (VTASKS_CONCURRENCY), and the web server's processes (GRANIAN_WORKERS).
+# Tasks the worker runs at once (VTASKS_CONCURRENCY, and VTASKS_INGEST_CONCURRENCY for event batches), and
+# the server's processes (GRANIAN_WORKERS; each one also runs the task worker).
 glitchtip_worker_concurrency: 4
 glitchtip_web_processes: 1
+# Memory one symbol cache build may use (GLITCHTIP_SYMBOLICATION_BUILD_MEMORY_MB, GlitchTip's default 700).
+# A native debug file larger than this / 1.82 is not symbolicated (GlitchTip logs it): 1200 covers files up
+# to about 660 MB. GlitchTip lowers it to 40 % of glitchtip_memory when that is smaller.
+glitchtip_symbolication_build_memory_mb: 1200
 
 # The superuser the playbook creates on the first run, so nobody else can register first. Its
 # password is the generated secret glitchtip_admin_password (/srv/teamcraft/secrets on the host).
