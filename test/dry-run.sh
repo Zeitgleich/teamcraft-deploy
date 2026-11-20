@@ -344,8 +344,10 @@ verify() {
   step "Messages between two users (TeamCraft e2e harness)"
   if [ -n "${DRY_RUN_SKIP_E2E:-}" ]; then
     echo "skip  e2e (DRY_RUN_SKIP_E2E)"
+  # RUST_MIN_STACK as in TeamCraft's scripts/e2e.sh: the test thread polls the whole test body, whose
+  # futures in a debug build no longer fit the default 2 MiB (stack overflow).
   elif (cd "$teamcraft_repo" && SSL_CERT_FILE="$ca" DEV_TOKEN_ISSUER="https://$id_domain/realms/teamcraft" \
-      E2E_DEPLOYED_URL="https://$domain" SQLX_OFFLINE=true \
+      E2E_DEPLOYED_URL="https://$domain" SQLX_OFFLINE=true RUST_MIN_STACK="${RUST_MIN_STACK:-16777216}" \
       cargo test -q -p teamcraft-e2e --features e2e --test suite -- --exact deployed::a_deployed_instance_is_healthy_and_delivers_messages --nocapture); then
     echo "ok    e2e: login and encrypted messages both ways"
   else
