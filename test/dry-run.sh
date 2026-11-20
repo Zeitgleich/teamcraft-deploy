@@ -302,8 +302,8 @@ verify() {
         | XDG_RUNTIME_DIR=/run/user/$(id -u tc-glitchtip) runuser -u tc-glitchtip -- podman exec -i teamcraft-glitchtip-web ./manage.py shell \
         | grep -qx 1'
     # shellcheck disable=SC2016 # expands inside the target, not here
-    check "GlitchTip worker running" docker exec "$target" sh -c '
-      XDG_RUNTIME_DIR=/run/user/$(id -u tc-glitchtip) runuser -u tc-glitchtip -- systemctl --user is-active glitchtip-worker.service'
+    check "GlitchTip task worker running (inside the web unit)" docker exec "$target" sh -c '
+      journalctl CONTAINER_NAME=teamcraft-glitchtip-web -o cat | grep -q "starting scheduler"'
   fi
   local port
   for port in 5432 8080 8081 8180 9180 3900 3901 3903 8090 6390; do

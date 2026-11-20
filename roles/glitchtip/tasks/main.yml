@@ -15,6 +15,7 @@
   vars:
     base_service_name: "{{ glitchtip_unit }}"
     base_service_user: tc-glitchtip
+  # glitchtip-worker: the unit of GlitchTip < 7, on hosts that never ran the install since.
   loop: [glitchtip-worker, glitchtip-web, glitchtip-valkey]
   loop_control:
     loop_var: glitchtip_unit

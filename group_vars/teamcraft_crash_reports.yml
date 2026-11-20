@@ -64,7 +64,6 @@ teamcraft_services:
   - {name: postgres, user: tc-db, enabled: true}
   - {name: glitchtip-valkey, user: tc-glitchtip, enabled: true}
   - {name: glitchtip-web, user: tc-glitchtip, enabled: true}
-  - {name: glitchtip-worker, user: tc-glitchtip, enabled: true}
 
 # The nightly dump of the glitchtip database (docs/backups.md). The off-site copy also copies the chat
 # server's attachment bucket and isn't meant for this host: keep it off.
