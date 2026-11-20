@@ -303,7 +303,7 @@ verify() {
         | grep -qx 1'
     # shellcheck disable=SC2016 # expands inside the target, not here
     check "GlitchTip task worker running (inside the web unit)" docker exec "$target" sh -c '
-      journalctl CONTAINER_NAME=teamcraft-glitchtip-web -o cat | grep -q "Scheduler started"'
+      journalctl CONTAINER_NAME=teamcraft-glitchtip-web -o cat | grep -q "starting scheduler"'
   fi
   local port
   for port in 5432 8080 8081 8180 9180 3900 3901 3903 8090 6390; do
