@@ -182,14 +182,17 @@ directives; it never sees TeamCraft otherwise. After a playbook change of ports,
 ## Firewall
 
 **Tools & Settings → Firewall** (the Firewall extension; install it from Extensions if it's missing):
-*Add Custom Rule*, name `TeamCraft calls`, direction incoming, action allow, **UDP port 3478**, all
-sources; **Apply Changes**. 80/443 are open already. The firewall extension handles IPv4 and IPv6.
+*Add Custom Rule*, name `TeamCraft calls`, direction incoming, action allow, **UDP ports 3478 and
+3479**, all sources; **Apply Changes**. 80/443 are open already. The firewall extension handles IPv4
+and IPv6. (3479 is the SFU's reflection port for direct 1:1 calls through hard NATs,
+[../components/teamcraft-sfu.md](../components/teamcraft-sfu.md#direct-11-calls-through-hard-nats);
+without it calls work, those just stay on the SFU.)
 
 ```sh
-sudo nft list ruleset | grep 3478     # or: sudo iptables -S | grep 3478; sudo ip6tables -S | grep 3478
+sudo nft list ruleset | grep -E '3478|3479'   # or: sudo iptables -S | grep -E '3478|3479'; the same with ip6tables
 ```
 
-A firewall at your hoster (security group, robot firewall) needs udp/3478 too.
+A firewall at your hoster (security group, robot firewall) needs udp/3478 and udp/3479 too.
 
 ## Where Plesk keeps things
 

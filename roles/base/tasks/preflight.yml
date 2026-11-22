@@ -35,6 +35,8 @@
          + ([{'proto': 'udp', 'port': teamcraft_ports.sfu, 'user': 'tc-sfu'},
              {'proto': 'tcp', 'port': teamcraft_ports.sfu_control, 'user': 'tc-sfu'},
              {'proto': 'tcp', 'port': teamcraft_ports.sfu_fallback, 'user': 'tc-sfu'}] if teamcraft_sfu_enabled else [])
+         + ([{'proto': 'udp', 'port': teamcraft_ports.sfu_reflect, 'user': 'tc-sfu'}]
+            if teamcraft_sfu_enabled and (teamcraft_ports.sfu_reflect | default(0) | int) > 0 else [])
          + ([{'proto': 'tcp', 'port': teamcraft_ports.keycloak, 'user': 'tc-keycloak'},
              {'proto': 'tcp', 'port': teamcraft_ports.keycloak_management, 'user': 'tc-keycloak'}] if keycloak_enabled else [])
          + ([{'proto': 'tcp', 'port': teamcraft_ports.dex, 'user': 'tc-dex'}] if dex_enabled else [])

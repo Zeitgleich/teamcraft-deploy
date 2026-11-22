@@ -16,6 +16,9 @@ table inet filter {
 		udp dport 443 accept comment "HTTP/3"
 {% if base_firewall_open_sfu %}
 		udp dport {{ teamcraft_ports.sfu }} accept comment "SFU (QUIC)"
+{% if teamcraft_ports.sfu_reflect | default(0) | int > 0 %}
+		udp dport {{ teamcraft_ports.sfu_reflect }} accept comment "SFU (reflections for direct calls)"
+{% endif %}
 {% endif %}
 {% for rule in base_firewall_extra_ports %}
 		{{ rule.proto }} dport {{ rule.port }} accept
