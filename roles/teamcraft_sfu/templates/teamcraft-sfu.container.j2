@@ -16,6 +16,10 @@ Volume=/home/tc-sfu/config/call-signing.pub.pem:/etc/teamcraft/call-signing.pub.
 Secret=sfu_registration_token,type=env,target=TEAMCRAFT_SFU_REGISTRATION_TOKEN
 # Dual-stack socket: [::] with IPV6_V6ONLY off accepts IPv4 (mapped) and IPv6.
 Environment=TEAMCRAFT_SFU_BIND=[::]:{{ teamcraft_ports.sfu }}
+{% if teamcraft_ports.sfu_reflect | default(0) | int > 0 %}
+# The second port that only reflects (hard NAT detection for direct 1:1 calls): public, dual-stack.
+Environment=TEAMCRAFT_SFU_REFLECT_BIND=[::]:{{ teamcraft_ports.sfu_reflect }}
+{% endif %}
 # Health and host controls (called by the server): loopback only.
 Environment=TEAMCRAFT_SFU_HEALTH_BIND=127.0.0.1:{{ teamcraft_ports.sfu_control }}
 # Call fallback (WebSocket over TCP for clients whose network blocks UDP), reached through the proxy at

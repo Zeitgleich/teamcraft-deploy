@@ -20,7 +20,8 @@ A wildcard `*.chat.example.com` (A + AAAA) next to `chat.example.com` covers all
 Caddy gets Let's Encrypt certificates for every name over HTTP (port 80), so the records must resolve
 before the first run. Behind your own proxy you get them yourself ([reverse-proxy.md](reverse-proxy.md)),
 the SFU's name included: it needs no proxying, only its certificate. The SFU uses the certificate of `sfu.chat.example.com`; clients connect to it on
-**UDP port 3478**, which must be reachable over IPv4 and IPv6.
+**UDP port 3478**, which must be reachable over IPv4 and IPv6 (and UDP 3479 for direct 1:1 calls
+through hard NATs, docs/components/teamcraft-sfu.md).
 
 The names can be changed (`teamcraft_sfu_hostname`, `keycloak_hostname`, `garage_hostname`,
 `calcraft_hostname`, `glitchtip_hostname`) if you prefer others.

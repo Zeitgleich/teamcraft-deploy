@@ -150,18 +150,19 @@ With certbot you can also trigger the copy right at renewal:
 
 ## Firewall
 
-Your proxy's 80/443 stay as they are. TeamCraft adds one port: **udp/3478** (`teamcraft_ports.sfu`),
-IPv4 and IPv6, for calls. With `base_firewall_enabled: true` the playbook's nftables ruleset opens it –
+Your proxy's 80/443 stay as they are. TeamCraft adds two ports: **udp/3478** (`teamcraft_ports.sfu`),
+IPv4 and IPv6, for calls, and **udp/3479** (`teamcraft_ports.sfu_reflect`) for direct 1:1 calls
+through hard NATs ([components/teamcraft-sfu.md](components/teamcraft-sfu.md#direct-11-calls-through-hard-nats)). With `base_firewall_enabled: true` the playbook's nftables ruleset opens it –
 but it **replaces the whole ruleset**, including your proxy's or panel's rules. On a shared server set
 `base_firewall_enabled: false` and open the port yourself:
 
 ```sh
-sudo ufw allow 3478/udp                                                        # ufw
-sudo firewall-cmd --permanent --add-port=3478/udp && sudo firewall-cmd --reload  # firewalld
+sudo ufw allow 3478:3479/udp                                                             # ufw
+sudo firewall-cmd --permanent --add-port=3478-3479/udp && sudo firewall-cmd --reload  # firewalld
 ```
 
 Plesk: [proxies/plesk.md](proxies/plesk.md#firewall). A hoster's firewall in front (cloud security
-group) needs the same port.
+group) needs the same ports.
 
 ## Preflight checks
 

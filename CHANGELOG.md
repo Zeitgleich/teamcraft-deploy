@@ -6,6 +6,14 @@ Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- The SFU's second UDP port, **udp/3479** (`teamcraft_ports.sfu_reflect`, `TEAMCRAFT_SFU_REFLECT_BIND`):
+  it only answers reflections, which tell a call's devices whether a hard NAT is in the way, so 1:1
+  calls go direct through those too (TeamCraft#127). The managed firewall opens it; with your own
+  firewall (Plesk, ufw, a hoster's) open udp/3479 next to udp/3478, IPv4 and IPv6. Without it calls
+  work as before. `teamcraft_ports.sfu_reflect: 0` turns it off.
+
 ### Fixed
 
 - `just self-check` failed on the call fallback (`/call/ws` answered 502) although calls worked: the

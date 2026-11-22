@@ -13,9 +13,20 @@ Clients whose network blocks UDP fall back to a WebSocket through the reverse pr
 | `teamcraft_sfu_image`          | `ghcr.io/zeitgleich/teamcraft-sfu:<version>` | image                                                    |
 | `teamcraft_sfu_memory`         | `1g`                                         | memory limit                                             |
 | `teamcraft_ports.sfu`          | `3478`                                       | public UDP port (firewall and DNS docs follow it)        |
+| `teamcraft_ports.sfu_reflect`  | `3479`                                       | public UDP port for direct calls' reflections; 0: off    |
 | `teamcraft_sfu_rmem_max_bytes` | `4194304`                                    | lower limit for the host's `net.core.rmem_max`; 0: leave |
 | `teamcraft_ports.sfu_fallback` | `8082`                                       | loopback port of the call fallback (TCP, behind proxy)   |
 | `teamcraft_sfu_nofile`         | `4096`                                       | open file limit of the container; 0: Podman's            |
+
+## Direct 1:1 calls through hard NATs
+
+A call between two devices may carry its voice directly between them (TeamCraft#127). Most home
+routers let that through with the SFU's port alone. Behind a NAT that maps every destination to a
+new port (some mobile carriers, company firewalls) the devices only find a way if they can tell: the
+SFU answers reflections on a second UDP port, **udp/3479** (`teamcraft_ports.sfu_reflect`,
+`TEAMCRAFT_SFU_REFLECT_BIND`), and nothing else there. Open it next to udp/3478, IPv4 and IPv6; the
+managed firewall does. `teamcraft_ports.sfu_reflect: 0` turns it off: those calls then stay on the
+SFU. TeamCraft releases before the one with #2313 ignore the setting.
 
 ## Call fallback for networks that block UDP
 
